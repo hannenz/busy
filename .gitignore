@@ -1,4 +1,6 @@
 *.o
 *.swp
 *~
+rmall.sh
+test.c
 
