@@ -45,13 +45,13 @@ static sighandler_t handle_signal(gint sig_nr, sighandler_t signalhandler);
  *                       CLEANUP                         *
  * *******************************************************
  */
- 
+
 
 static void cleanup(){
 	AppData *app_data;
 
 	app_data = app_data_aux_ptr;
-	
+
 	config_destroy(&app_data->config);
 
 	g_list_foreach(app_data->hosts, (GFunc)g_object_unref, NULL);
@@ -59,7 +59,7 @@ static void cleanup(){
 	g_list_free(app_data->hosts);
 	g_queue_free(app_data->queue);
 	g_slice_free(AppData, app_data);
-	
+
 //	g_mem_profile();
 }
 
@@ -89,7 +89,7 @@ static void on_backup_finished(Backup *backup, time_t finished, AppData *app_dat
 	if (backup_get_backup_type(backup) == BUS_BACKUP_TYPE_FULL && backup_get_failures(backup) == 0){
 		host_remove_incr_backups(backup_get_host(backup));
 	}
-	
+
 	g_free(s);
 	g_object_unref(backup);
 }
@@ -123,7 +123,7 @@ static void on_incoming(GSocketService *service, gpointer udata){
 
 	g_print("Incoming Connection\n");
 	g_object_ref(connection);
-	
+
 	GSocket *socket = g_socket_connection_get_socket(connection);
 	fd = g_socket_get_fd(socket);
 	channel = g_io_channel_unix_new(fd);
@@ -141,7 +141,7 @@ static gboolean network_read(GIOChannel *channel, GIOCondition condition, gpoint
 	gchar *str, **token;
 	gsize len;
 	gint ret, i;
-	
+
 	ret = g_io_channel_read_line(channel, &str, &len, NULL, NULL);
 	if (ret == G_IO_STATUS_ERROR){
 		g_printerr("Error reading from network\n");
@@ -230,7 +230,7 @@ static gdouble get_age(const gchar *str){
 
 static void queue_backup(Host *host, BusBackupType type, AppData *app_data){
 	Backup *backup;
-	
+
 	backup = backup_new_for_host(host);
 	g_signal_connect(G_OBJECT(backup), "queued", (GCallback)on_backup_queued, app_data);
 	g_signal_connect(G_OBJECT(backup), "started", (GCallback)on_backup_started, app_data);
@@ -239,7 +239,7 @@ static void queue_backup(Host *host, BusBackupType type, AppData *app_data){
 	g_signal_connect(G_OBJECT(backup), "failure", (GCallback)on_backup_failure, app_data);
 	g_signal_connect(G_OBJECT(backup), "job_started", (GCallback)on_backup_job_started, app_data);
 	g_signal_connect(G_OBJECT(backup), "job_finished", (GCallback)on_backup_job_finished, app_data);
-	
+
 	backup_set_backup_type(backup, type);
 	backup_set_queued(backup, time(NULL));
 	backup_set_state(backup, BUS_BACKUP_STATE_QUEUED);
@@ -265,7 +265,7 @@ static void check_backup(Host *host, AppData *app_data){
 			type = BUS_BACKUP_TYPE_FULL;
 		}
 		host_free_existing_backup(youngest_full);
-		
+
 		queue_backup(host, type, app_data);
 	}
 	host_free_existing_backup(youngest);
@@ -312,10 +312,10 @@ static gboolean read_config(AppData *app_data){
 
 	app_data->hosts = NULL;
 	string = g_string_new(NULL);
-	
+
 	config_init(&app_data->config);
 	if (config_read_file(&app_data->config, CONFIG_FILE) == CONFIG_FALSE){
-		g_printerr("FAIL\n");
+		g_printerr("Failed to read configuration\n");
 		return (FALSE);
 	}
 
@@ -371,20 +371,38 @@ static void start_daemon(const gchar *log_name, gint facility){
 		// this is the parent process.
 		exit (pid > 0 ? EXIT_SUCCESS : EXIT_FAILURE);
 	}
-	//child...
+
+	//Child...
+	// Create a new SID (Session) for the child process
 	if (setsid() < 0){
+		syslog(facility | LOG_ERR, "setsid() failed");
 		exit (EXIT_FAILURE);
 	}
+
 	handle_signal(SIGHUP, SIG_IGN);
+
+	// Terminate the child
 	if ((pid = fork()) != 0){
 		exit (EXIT_FAILURE);
 	}
-	chdir("/");
+
+	// Change current working directory
+	if ((chdir("/")) < 0){
+		syslog(facility | LOG_ERR, "chdir() failed");
+		exit(EXIT_FAILURE);
+	}
+
+	// Change the file mode mask
 	umask(0);
+
+	// Close file descriptors
 	for (i = sysconf(_SC_OPEN_MAX); i > 0 ; i--){
 		close(i);
 	}
+
+	// Open log
 	openlog(log_name, (LOG_PID | LOG_CONS | LOG_NDELAY), facility);
+	syslog(LOG_NOTICE, "---------------- SUTOBUS DAEMON STARTED -------------------");
 }
 
 
@@ -400,9 +418,10 @@ int main(int argc, char **argv){
 	g_mem_set_vtable(glib_mem_profiler_table);
 	g_type_init();
 
-/*
+
 	start_daemon(g_get_prgname(), LOG_LOCAL0);
-*/
+	syslog(LOG_NOTICE, "Daemon has been started\n");
+
 
 	atexit(cleanup);
 
@@ -428,10 +447,10 @@ int main(int argc, char **argv){
 	g_signal_connect(service, "incoming", (GCallback)on_incoming, NULL);
 
 	wakeup(app_data);
-	
+
 	g_timeout_add(1000 * WAKEUP_INTERVAL, (GSourceFunc)wakeup, app_data);
 	g_idle_add((GSourceFunc)do_backup, app_data);
-	
+
 	main_loop = g_main_loop_new(NULL, FALSE);
 	g_main_loop_run(main_loop);
 

@@ -63,7 +63,7 @@ Job *job_new(Backup *backup, gchar *srcdir){
 	job->finished = 0;
 	g_string_assign(job->destdir, replace_slashes(srcdir, 'B'));
 	g_string_assign(job->srcdir, srcdir);
-	
+
 	return (job);
 }
 
@@ -137,7 +137,10 @@ void job_run(Job *job){
 	logfileparam = g_strdup_printf("--log-file=%s", logfile);
 	argv[argc++] = logfileparam;
 
-	g_mkdir_with_parents(dest, 0755);
+	if (g_mkdir_with_parents(dest, 0755) == -1){
+		g_print("Couldn't create directory: %s %s\n", dest, g_strerror(errno));
+		return;
+	}
 
 	src = g_strconcat(src, "/", NULL);
 	dest = g_strconcat(dest, "/", NULL);
@@ -145,8 +148,10 @@ void job_run(Job *job){
 	argv[argc++] = src;
 	argv[argc++] = dest;
 	argv[argc++] = NULL;
-	
+
 	g_object_set(G_OBJECT(job), "rsync_cmd", g_strjoinv(" ", argv), NULL);
+
+	g_print("RSYNC: %s\n", g_strjoinv(" ", argv));
 
 	GError *error = NULL;
 	GPid pid;
@@ -172,7 +177,7 @@ void job_run(Job *job){
 
 void job_dump(Job *job){
 	g_return_if_fail(BUS_IS_JOB(job));
-	
+
 	g_print("******** Job Dump *******************\n");
 	g_print("---------------------------------------\n");
 }
@@ -242,7 +247,7 @@ Backup *job_get_backup(Job *job){
 	g_return_val_if_fail(BUS_IS_JOB(job), NULL);
 	return (job->backup);
 }
-	
+
 
 
 void job_set_mysql_id(Job *job, gint id){

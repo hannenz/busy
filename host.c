@@ -84,7 +84,7 @@ Host *host_new_from_config_setting(config_t *config, config_setting_t *cs){
 	long int mi;
 	gint max_incr;
 	gdouble max_age_incr, max_age_full;
-	
+
 	if ((host = host_new()) == NULL){
 		return (NULL);
 	}
@@ -244,7 +244,7 @@ GList *host_read_backups(Host *host, BusBackupType type){
 			gchar tyc;
 			gint n;
 			BusBackupType ty;
-				
+
 			n = sscanf(name, "%4u-%2u-%2u_%2u-%2u-%2u%c", &ti.tm_year, &ti.tm_mon, &ti.tm_mday, &ti.tm_hour, &ti.tm_min, &ti.tm_sec, &tyc);
 			if (n == 7){
 				ti.tm_year -= 1900;
@@ -287,7 +287,7 @@ gint host_get_n_incr(Host *host){
 	gint n;
 
 	g_return_val_if_fail(BUS_IS_HOST(host), -1);
-	
+
 	backups = host_read_backups(host, BUS_BACKUP_TYPE_INCREMENTAL);
 	n = g_list_length(backups);
 	g_list_foreach(backups, (GFunc)host_free_existing_backup, NULL);
@@ -298,7 +298,7 @@ gint host_get_n_incr(Host *host){
 gint host_get_n_full(Host *host){
 	GList *backups;
 	gint n;
-	
+
 	g_return_val_if_fail(BUS_IS_HOST(host), -1);
 
 	backups = host_read_backups(host, BUS_BACKUP_TYPE_FULL);
@@ -352,7 +352,7 @@ void host_remove_incr_backups(Host *host){
 	gchar *path;
 
 	g_return_if_fail(BUS_IS_HOST(host));
-	
+
 	path = g_build_filename(host->backupdir->str, host->name->str, NULL);
 	if ((dir = g_dir_open(path, 0, NULL))){
 		while ((name = g_dir_read_name(dir)) != NULL){
@@ -409,7 +409,7 @@ void host_set_max_age_incr(Host *self, gdouble max_age_incr){
 	g_return_if_fail(BUS_IS_HOST(self));
 	self->max_age_incr = max_age_incr;
 	g_object_notify(G_OBJECT(self), "max_age_incr");
-	
+
 }
 
 void host_set_max_age_full(Host *self, gdouble max_age_full){
@@ -553,7 +553,7 @@ gboolean host_is_on_schedule(Host *self){
 	if (self->schedule == NULL){
 		return (TRUE);
 	}
-	
+
 	now = time(NULL);
 	strftime(tstr, sizeof(tstr), "%H:%M", localtime(&now));
 	for (s = self->schedule; s != NULL; s = s->next){
@@ -610,7 +610,7 @@ void host_dump(Host *host){
 	gchar *str;
 
 	g_return_if_fail(BUS_IS_HOST(host));
-	
+
 	g_print("******** Host Dump *******************\n");
 	g_print("Name:         %s\n", host_get_name(host));
 	g_print("Hostname:     %s\n", host_get_hostname(host));
@@ -621,7 +621,7 @@ void host_dump(Host *host){
 	g_print("Backup Dir:   %s\n", host->backupdir->str);
 
 	g_object_get(G_OBJECT(host), "excludes", &excludes, "includes", &includes, "srcdirs", &srcdirs, "ips", &ips, "schedule", &schedule, NULL);
-	
+
 	str = string_list_concat(excludes, ", ");	g_print("Excludes:   %s\n", str);	g_free(str);
 	str = string_list_concat(includes, ", ");	g_print("Includes:   %s\n", str);	g_free(str);
 	str = string_list_concat(srcdirs, ", ");	g_print("Srcdirs:    %s\n", str);	g_free(str);

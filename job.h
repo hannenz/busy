@@ -3,6 +3,7 @@
 
 #include <mysql.h>
 #include <glib-object.h>
+#include <errno.h>
 
 G_BEGIN_DECLS
 
