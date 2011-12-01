@@ -10,7 +10,10 @@ autobus: $(OBJECTS)
 	$(CC) -Wall -g -c $(CFLAGS) $<
 
 install:
-	cp ./autobus /usr/local/bin
+	cp ./autobus /usr/local/bin/
+	cp init.d/autobus /etc/init.d/
+	chmod +x /etc/init.d/autobus
+	mkdir -p /var/lock/autobus
 
 clean:
 	rm *.o

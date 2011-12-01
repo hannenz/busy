@@ -118,6 +118,9 @@ static void on_incoming(GSocketService *service, gpointer udata){
 	gint fd;
 	GIOChannel *channel;
 	GSocketConnection *connection;
+	AppData *app_data;
+
+	app_data = udata;
 
 	connection = udata;
 
@@ -172,21 +175,21 @@ static gboolean network_read(GIOChannel *channel, GIOCondition condition, gpoint
 		Host *host;
 		if (g_strcmp0(token[1], "full") == 0){
 			g_print("Requested full backup for \"%s\"\n", token[2]);
-			if ((host = host_find_by_name(token[2], NULL)) == NULL){			// FIXME!!!
+			if ((host = host_find_by_name(token[2], app_data_aux_ptr)) == NULL){
 				g_print("No such host: %s\n", token[2]);
 			}
 			else {
-				g_print("Calling manual_backup()\n");
-				queue_backup(host, BUS_BACKUP_TYPE_FULL, NULL);					// FIXME!!!
+				g_print("Calling manual_backup() for %s\n", host_get_hostname(host));
+				queue_backup(host, BUS_BACKUP_TYPE_FULL, app_data_aux_ptr);
 			}
 		}
 		else if (g_strcmp0(token[1], "incr") == 0){
 			g_print("Requested incremental backup for \"%s\"\n", token[2]);
-			if ((host = host_find_by_name(token[2], NULL)) == NULL){					// FIXME!!!
+			if ((host = host_find_by_name(token[2], app_data_aux_ptr)) == NULL){
 				g_print("No such host: \"%s\"\n", token[2]);
 			}
 			else {
-				queue_backup(host, BUS_BACKUP_TYPE_INCREMENTAL, NULL);			// FIXME!!!
+				queue_backup(host, BUS_BACKUP_TYPE_INCREMENTAL, app_data_aux_ptr);
 			}
 		}
 	}
@@ -211,6 +214,10 @@ static gboolean find_by_name(GList *el, const gchar *name){
 
 static Host *host_find_by_name(const gchar *name, AppData *app_data){
 	GList *el;
+	g_return_val_if_fail(app_data != NULL, NULL);
+
+	g_print("--- host_find_by_name(): name=%s\n", name);
+
 	el = g_list_find_custom(app_data->hosts, name, (GCompareFunc)find_by_name);
 	return (el->data);
 }
@@ -283,7 +290,7 @@ static void ping_host(Host *host, AppData *app_data){
 		}
 	}
 	else {
-		g_print("Host \"%s\" is not on schedule\n", host_get_name(host));
+		//~ g_print("Host \"%s\" is not on schedule\n", host_get_name(host));
 	}
 }
 
@@ -402,7 +409,14 @@ static void start_daemon(const gchar *log_name, gint facility){
 
 	// Open log
 	openlog(log_name, (LOG_PID | LOG_CONS | LOG_NDELAY), facility);
-	syslog(LOG_NOTICE, "---------------- SUTOBUS DAEMON STARTED -------------------");
+
+	GString *lockfilename;
+
+	pid = getpid();
+	lockfilename = g_string_new(NULL);
+	g_string_printf(lockfilename, "/var/lock/autobus/%u", pid);
+	g_file_set_contents(lockfilename->str, "autobus", -1, NULL);
+	g_string_free(lockfilename, TRUE);
 }
 
 
@@ -420,6 +434,7 @@ int main(int argc, char **argv){
 
 
 	start_daemon(g_get_prgname(), LOG_LOCAL0);
+	syslog(LOG_NOTICE, "-----------------------------------\n");
 	syslog(LOG_NOTICE, "Daemon has been started\n");
 
 
@@ -444,7 +459,7 @@ int main(int argc, char **argv){
 	g_object_unref(saddr);
 
 	g_socket_service_start(service);
-	g_signal_connect(service, "incoming", (GCallback)on_incoming, NULL);
+	g_signal_connect(service, "incoming", (GCallback)on_incoming, app_data);
 
 	wakeup(app_data);
 
