@@ -18,7 +18,7 @@ enum{
 	PROP_JOBS,
 	PROP_LAST,
 	PROP_MYSQL_ID
-	
+
 };
 
 enum{
@@ -38,7 +38,7 @@ G_DEFINE_TYPE (Backup, backup, G_TYPE_OBJECT);
 
 static void backup_init (Backup *object){
 	Backup *backup = BUS_BACKUP(object);
-	
+
 	backup->type = BUS_BACKUP_TYPE_NONE;
 	backup->state = BUS_BACKUP_STATE_UNDEFINED;
 	backup->host = NULL;
@@ -63,10 +63,22 @@ static void backup_init (Backup *object){
 static void backup_finalize (GObject *object) {
 	Backup *backup = BUS_BACKUP(object);
 
+
 	close(backup->logfile_fd);
 	gchar *new_logfile = g_build_filename(backup->path->str, backup->name->str, "backup.log", NULL);
-	g_rename(backup->logfile_name->str, new_logfile);
-	g_chmod(new_logfile, 0644);
+
+
+	GFile *src, *dest;
+	src = g_file_new_for_path(backup->logfile_name->str);
+	dest = g_file_new_for_path(new_logfile);
+	g_file_copy(src, dest, 0, FALSE, NULL, NULL, NULL);
+
+	//~ if (g_rename(backup->logfile_name->str, new_logfile) != 0){
+		//~ g_print("--- ERROR: g_rename(%s, %s) failed: %s\n", backup->logfile_name->str, new_logfile, g_strerror(errno));
+	//~ }
+	if (g_chmod(new_logfile, 0644) != 0){
+		g_print("--- ERROR: g_chmod(%s, 0644) failed: %s\n", new_logfile, g_strerror(errno));
+	}
 	g_free(new_logfile);
 
 	g_string_free(backup->name, TRUE);
@@ -96,7 +108,7 @@ void backup_log(Backup *backup, gchar *fmt, ...){
 
 	now = time(NULL);
 	strftime(head, sizeof(head), "%x %H:%M:%S", localtime(&now));
-	
+
 	out = g_strconcat(head, ": ", buf, "\n", NULL);
 
 	if (backup->logfile_ch){
@@ -155,7 +167,7 @@ Backup *backup_new_for_host(Host *host){
 
 static void on_job_started(Job *job, gpointer udata){
 	Backup *backup;
-	
+
 	backup = job_get_backup(job);
 	g_signal_emit_by_name(G_OBJECT(backup), "job_started", job);
 }
@@ -195,7 +207,7 @@ void backup_run(Backup *backup){
 	backup_set_started(backup, time(NULL));
 	backup_set_state(backup, BUS_BACKUP_STATE_IN_PROGRESS);
 	backup_log(backup, "Backup started for Host: %s", backup->host->name->str);
-	
+
 	for (lptr = backup->host->srcdirs; lptr != NULL; lptr = lptr->next){
 		Job *job;
 		gchar *srcdir = lptr->data;
@@ -370,7 +382,7 @@ GList *backup_get_jobs(Backup *backup){
 	g_return_val_if_fail(BUS_IS_BACKUP(backup), NULL);
 	return (backup->jobs);
 }
-	
+
 
 gdouble backup_get_duration(Backup *backup){
 	gdouble duration;
@@ -392,7 +404,7 @@ GList *backup_get_running_jobs(Backup *backup){
 
 BusBackupType backup_check(Backup *backup){
 	BusBackupType type = BUS_BACKUP_TYPE_NONE;
-	
+
 	g_return_val_if_fail(BUS_IS_BACKUP(backup), BUS_BACKUP_TYPE_NONE);
 
 	return (type);

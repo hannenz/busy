@@ -151,8 +151,6 @@ void job_run(Job *job){
 
 	g_object_set(G_OBJECT(job), "rsync_cmd", g_strjoinv(" ", argv), NULL);
 
-	g_print("RSYNC: %s\n", g_strjoinv(" ", argv));
-
 	GError *error = NULL;
 	GPid pid;
 	gint stdin, stdout, stderr;

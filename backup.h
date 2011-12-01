@@ -3,6 +3,8 @@
 
 #include <libconfig.h>
 #include <glib-object.h>
+#include <gio/gio.h>
+#include <errno.h>
 
 G_BEGIN_DECLS
 
