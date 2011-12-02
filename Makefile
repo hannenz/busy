@@ -18,7 +18,10 @@ install:
 	cp ./init.d/busy /etc/init.d/
 	cp ./conf/busy.conf /etc/busy/
 	chmod +x /etc/init.d/busy
-	
 
+	ln -s /etc/init.d/busy /etc/rc2.d/S23busy
+	ln -s /etc/init.d/busy /etc/rc0.d/k23busy
+	ln -s /etc/init.d/busy /etc/rc6.d/k23busy
+	
 clean:
 	rm *.o
