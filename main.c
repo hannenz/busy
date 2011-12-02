@@ -206,20 +206,18 @@ static gboolean network_read(GIOChannel *channel, GIOCondition condition, gpoint
 }
 
 
-static gboolean find_by_name(GList *el, const gchar *name){
-	Host *host;
-	host = el->data;
-	return (g_strcmp0(name, host_get_name(host)) == 0);
+static gboolean find_by_name(Host *host, const gchar *name){
+	return (g_strcmp0(name, host_get_name(host)));
 }
 
 static Host *host_find_by_name(const gchar *name, AppData *app_data){
 	GList *el;
 	g_return_val_if_fail(app_data != NULL, NULL);
 
-	g_print("--- host_find_by_name(): name=%s\n", name);
-
-	el = g_list_find_custom(app_data->hosts, name, (GCompareFunc)find_by_name);
-	return (el->data);
+	if ((el = g_list_find_custom(app_data->hosts, name, (GCompareFunc)find_by_name)) != NULL){
+		return (el->data);
+	}
+	return (NULL);
 }
 
 
@@ -345,6 +343,9 @@ static gboolean read_config(AppData *app_data){
 		}
 		else break;
 	}
+	
+	db_hosts_store(app_data->hosts, app_data->mysql);
+	
 	return (g_list_length(app_data->hosts) > 0);
 }
 

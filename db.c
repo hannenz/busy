@@ -141,6 +141,38 @@ gint db_job_update(Job *job, MYSQL *mysql){
 	}
 	return (ret == 0);
 }
+
+gint db_hosts_store(GList *hosts, MYSQL *mysql){
+	gchar *query;
+	GList *ptr;
+	Host *host;
+	gint ret;
+	
+	query = g_strdup_printf("DELETE FROM `hosts` WHERE 1");
+	if ((ret = mysql_real_query(mysql, query, strlen(query))) != 0){
+		syslog (LOG_ERR, "MySQL Query failed: %s (%d: %s)", query, ret, mysql_error(mysql));
+	}
+	g_free(query);	
+	
+	for (ptr = hosts; ptr != NULL; ptr = ptr->next){
+		host = ptr->data;
+		query = g_strdup_printf("INSERT INTO `hosts` (`name`, `hostname`, `max_incr`, `max_age_full`, `max_age_incr`, `backupdir`) VALUES ('%s', '%s', '%d', '%.5f', '%.5f', '%s')",
+			host_get_name(host),
+			host_get_hostname(host),
+			host_get_max_incr(host),
+			host_get_max_age_full(host),
+			host_get_max_age_incr(host),
+			host_get_backupdir(host)
+		);
+		if ((ret = mysql_real_query(mysql, query, strlen(query))) != 0){
+			syslog (LOG_ERR, "MySQL Query failed: %s (%d: %s)", query, ret, mysql_error(mysql));
+		}
+		g_free(query);
+	}
+	return (0);
+}
+	
+	
 /*
 gboolean db_remove_backup(gchar *destdir){
 	gchar *query;
