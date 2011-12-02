@@ -12,6 +12,7 @@ autobus: $(OBJECTS)
 install:
 	cp ./autobus /usr/local/bin/
 	cp init.d/autobus /etc/init.d/
+#	ln -s /etc/rc0.2/K02 /etc/init.d/autobus		!FIXME
 	chmod +x /etc/init.d/autobus
 	mkdir -p /var/lock/autobus
 
