@@ -11,7 +11,7 @@ MYSQL *db_connect(const gchar *login, const gchar *password){
 	MYSQL *mysql;
 	mysql = mysql_init(NULL);
 	if (mysql){
-		mysql = mysql_real_connect(mysql, "localhost", login, password, "buddy", 0, NULL, CLIENT_IGNORE_SIGPIPE);
+		mysql = mysql_real_connect(mysql, "localhost", login, password, "busy", 0, NULL, CLIENT_IGNORE_SIGPIPE);
 		if (mysql){
 			my_bool reconnect = 1;
 			mysql_options(mysql, MYSQL_OPT_RECONNECT, &reconnect);

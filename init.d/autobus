@@ -1,10 +1,10 @@
 #!/bin/bash
 #
-# Init script to start and stop autobus backup system
+# Init script to start and stop BUSY backup system
 #
 #
 
-NAME=autobus
+NAME=busyd
 DAEMON=/usr/local/bin/$NAME
 DESC="Centralized LAN backup system"
 
@@ -24,7 +24,7 @@ case "$1" in
 	
 	stop)
 		echo "Stopping $NAME"
-		for FILE in /var/lock/autobus/* ; do
+		for FILE in /var/lock/busy/* ; do
 			PID=$(basename "${FILE}")
 			kill -9 ${PID}
 			rm "${FILE}"

@@ -20,7 +20,7 @@
 #include "db.h"
 
 #define WAKEUP_INTERVAL 60
-#define CONFIG_FILE "/etc/buddy/buddy.conf"
+#define CONFIG_FILE "/etc/busy/busy.conf"
 
 typedef struct {
 	GList *hosts;
@@ -415,8 +415,8 @@ static void start_daemon(const gchar *log_name, gint facility){
 
 	pid = getpid();
 	lockfilename = g_string_new(NULL);
-	g_string_printf(lockfilename, "/var/lock/autobus/%u", pid);
-	g_file_set_contents(lockfilename->str, "autobus", -1, NULL);
+	g_string_printf(lockfilename, "/var/lock/busy/%u", pid);
+	g_file_set_contents(lockfilename->str, "busy", -1, NULL);
 	g_string_free(lockfilename, TRUE);
 }
 

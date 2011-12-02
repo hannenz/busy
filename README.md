@@ -34,12 +34,12 @@ to complie and install the daemon.
 The init script is must be started manually by now by issuing
 
 ~~~
-/etc/init.d/autobus start
+/etc/init.d/busyd start
 ~~~
 
 # Configuration
 
-Configuration of hosts is done by editing the file `/etc/buddy/buddy.conf`:
+Configuration of hosts is done by editing the file `/etc/busy/busy.conf`:
 
 
 # Web interface
