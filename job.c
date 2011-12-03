@@ -106,13 +106,20 @@ void job_run(Job *job){
 	}
 
 	if (g_list_length(job->backup->host->excludes) > 0){
+	
 		for (lptr = job->backup->host->excludes; lptr != NULL; lptr = lptr->next){
-			gchar *s;
-			s = g_strdup_printf("--exclude=\"%s\"", (gchar *)lptr->data);
-			excludes = (excludes == NULL) ? g_strdup(s) : g_strjoin(" ", excludes, s, NULL);
-			g_free(s);
+			excludes = (excludes == NULL) ? g_strdup((gchar*)lptr->data) : g_strjoin("\n", excludes, (gchar*)lptr->data, NULL);
 		}
-		argv[argc++] = excludes;
+		g_file_set_contents("/tmp/excludefile", excludes, -1, NULL);
+		argv[argc++] = g_strdup("--exclude-from=/tmp/excludefile");
+	
+/*		for (lptr = job->backup->host->excludes; lptr != NULL; lptr = lptr->next){*/
+/*			gchar *s;*/
+/*			s = g_strdup_printf("--exclude=\"%s\"", (gchar *)lptr->data);*/
+/*			excludes = (excludes == NULL) ? g_strdup(s) : g_strjoin(" ", excludes, s, NULL);*/
+/*			g_free(s);*/
+/*		}*/
+/*		argv[argc++] = excludes;*/
 	}
 	if (g_list_length(job->backup->host->includes) > 0){
 		for (lptr = job->backup->host->includes; lptr != NULL; lptr = lptr->next){
