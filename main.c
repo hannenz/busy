@@ -19,8 +19,7 @@
 #include "host.h"
 #include "db.h"
 
-#define WAKEUP_INTERVAL 60
-#define CONFIG_FILE "/etc/busy/busy.conf"
+#include "busy.h"
 
 typedef struct {
 	GList *hosts;
@@ -46,7 +45,8 @@ static sighandler_t handle_signal(gint sig_nr, sighandler_t signalhandler);
  * *******************************************************
  */
 
-
+/* Clean up
+ */
 static void cleanup(){
 	AppData *app_data;
 
@@ -68,35 +68,52 @@ static void cleanup(){
  * *******************************************************
  */
 
+/* Called when a backup is queued
+ */
 static void on_backup_queued(Backup *backup, time_t queued, AppData *app_data){
-	g_print("Received Signal: Backup queued: %s backup for host \"%s\"\n", backup_get_backup_type_str(backup), host_get_name(backup_get_host(backup)));
+	syslog(LOG_NOTICE, "Received Signal: Backup queued: %s backup for host \"%s\"\n", backup_get_backup_type_str(backup), host_get_name(backup_get_host(backup)));
 	db_backup_update(backup, "queued", time_t_to_datetime_str(queued), app_data->mysql);
 }
 
+/* Called when a backup starts
+ */
 static void on_backup_started(Backup *backup, time_t started, AppData *app_data){
-	g_print("Received Signal: Backup started: %s\n", host_get_name(backup_get_host(backup)));
+	syslog(LOG_NOTICE, "Received Signal: Backup started: %s\n", host_get_name(backup_get_host(backup)));
 	db_backup_update(backup, "started", time_t_to_datetime_str(started), app_data->mysql);
 }
 
+/* Called when a backup has finished
+ */
 static void on_backup_finished(Backup *backup, time_t finished, AppData *app_data){
 	gchar *s;
 
-	g_print("Received Signal: Backup finished: %s\n", host_get_name(backup_get_host(backup)));
+	syslog(LOG_NOTICE, "Received Signal: Backup finished: %s\n", host_get_name(backup_get_host(backup)));
+
+	// Update database record
 	db_backup_update(backup, "finished", time_t_to_datetime_str(finished), app_data->mysql);
+
+	// Calculate duration and update database record
 	s = g_strdup_printf("%u", (gint)finished - (gint)backup_get_started(backup));
 	db_backup_update(backup, "duration", s, app_data->mysql);
 
+	// If it was a full backup and it has finished without errors, remove all incremental backups
 	if (backup_get_backup_type(backup) == BUS_BACKUP_TYPE_FULL && backup_get_failures(backup) == 0){
 		host_remove_incr_backups(backup_get_host(backup));
 	}
 
+	// Clean up
 	g_free(s);
 	g_object_unref(backup);
 }
+
+/* Called when a backup's state changes
+ */
 static void on_backup_state_changed(Backup *backup, gint state, AppData *app_data){
 	db_backup_update(backup, "state", (gchar*)backup_get_state_str(backup), app_data->mysql);
 }
 
+/* Called when a backup fails
+ */
 static void on_backup_failure(Backup *backup, gint failures, AppData *app_data){
 	gchar *s;
 	s = g_strdup_printf("%u", failures);
@@ -104,16 +121,22 @@ static void on_backup_failure(Backup *backup, gint failures, AppData *app_data){
 	g_free(s);
 }
 
+/* Called when a backup starts a job
+ */
 static void on_backup_job_started(Backup *backup, Job *job, AppData *app_data){
-	g_print("Received Signal: Job Started: %u (%s on Host \"%s\")\n", job_get_pid(job), job_get_srcdir(job), job_get_hostname(job));
+	syslog(LOG_NOTICE, "Received Signal: Job Started: %u (%s on Host \"%s\")\n", job_get_pid(job), job_get_srcdir(job), job_get_hostname(job));
 	job_set_mysql_id(job, db_job_add(job, app_data->mysql));
 }
 
+/* Called when a job finishes
+ */
 static void on_backup_job_finished(Backup *backup, Job *job, AppData *app_data){
-	g_print("Received Signal: Job Finished: %u (%s on Host \"%s\")\n", job_get_pid(job), job_get_srcdir(job), job_get_hostname(job));
+	syslog(LOG_NOTICE, "Received Signal: Job Finished: %u (%s on Host \"%s\")\n", job_get_pid(job), job_get_srcdir(job), job_get_hostname(job));
 	db_job_update(job, app_data->mysql);
 }
 
+/* Called onincoming TCP connection
+ */
 static void on_incoming(GSocketService *service, gpointer udata){
 	gint fd;
 	GIOChannel *channel;
@@ -124,7 +147,7 @@ static void on_incoming(GSocketService *service, gpointer udata){
 
 	connection = udata;
 
-	g_print("Incoming Connection\n");
+/*	syslog(LOG_NOTICE, "Incoming Connection\n");*/
 	g_object_ref(connection);
 
 	GSocket *socket = g_socket_connection_get_socket(connection);
@@ -138,16 +161,20 @@ static void on_incoming(GSocketService *service, gpointer udata){
  *                       OTHER                         *
  * *****************************************************/
 
-
+/* Read from TCP connection
+ * A TCP connection on PORT 4000 on localhost can be used to issue commands
+ * to the daemon, e.g. start manual backups etc.
+ */
 static gboolean network_read(GIOChannel *channel, GIOCondition condition, gpointer udata){
 	GSocketConnection *connection = udata;
 	gchar *str, **token;
 	gsize len;
 	gint ret, i;
 
+	// Read the line
 	ret = g_io_channel_read_line(channel, &str, &len, NULL, NULL);
 	if (ret == G_IO_STATUS_ERROR){
-		g_printerr("Error reading from network\n");
+		syslog(LOG_ERR, "Error reading from network\n");
 		g_object_unref(connection);
 		return (FALSE);
 	}
@@ -155,6 +182,8 @@ static gboolean network_read(GIOChannel *channel, GIOCondition condition, gpoint
 		return (FALSE);
 	}
 
+
+	// Trim trailing non-alphanumeric character in line
 	for (i = len - 1; i > 0; i--){
 		if (!isalnum(str[i])){
 			str[i] = '\0';
@@ -164,33 +193,37 @@ static gboolean network_read(GIOChannel *channel, GIOCondition condition, gpoint
 		}
 	}
 
-	g_print("Incoming Message: %s\n", str);
-
+	// Split line into tokens
 	token = g_strsplit(str, " ", 0);
 
+	// Act upon command
 	if (g_strcmp0(token[0], "reload") == 0){
+		// Reload configuration
 		reload(0);
 	}
 	else if (g_strcmp0(token[0], "backup") == 0){
 		Host *host;
 		if (g_strcmp0(token[1], "full") == 0){
-			g_print("Requested full backup for \"%s\"\n", token[2]);
+			syslog(LOG_NOTICE, "Requested full backup for \"%s\"\n", token[2]);
 			if ((host = host_find_by_name(token[2], app_data_aux_ptr)) == NULL){
-				g_print("No such host: %s\n", token[2]);
+				syslog(LOG_WARNING, "No such host: %s\n", token[2]);
 			}
 			else {
-				g_print("Calling manual_backup() for %s\n", host_get_hostname(host));
+				syslog(LOG_NOTICE, "Calling manual_backup() for %s\n", host_get_hostname(host));
 				queue_backup(host, BUS_BACKUP_TYPE_FULL, app_data_aux_ptr);
 			}
 		}
 		else if (g_strcmp0(token[1], "incr") == 0){
-			g_print("Requested incremental backup for \"%s\"\n", token[2]);
+			syslog(LOG_NOTICE, "Requested incremental backup for \"%s\"\n", token[2]);
 			if ((host = host_find_by_name(token[2], app_data_aux_ptr)) == NULL){
-				g_print("No such host: \"%s\"\n", token[2]);
+				syslog(LOG_WARNING, "No such host: \"%s\"\n", token[2]);
 			}
 			else {
 				queue_backup(host, BUS_BACKUP_TYPE_INCREMENTAL, app_data_aux_ptr);
 			}
+		}
+		else {
+			syslog(LOG_WARNING, "Unknown backup type: %s\n", token[1]);
 		}
 	}
 	else if (g_strcmp0(token[0], "remove") == 0){
@@ -200,7 +233,7 @@ static gboolean network_read(GIOChannel *channel, GIOCondition condition, gpoint
 		exit(0);
 	}
 	else {
-		g_print("Invalid message: %s\n", str);
+		syslog(LOG_WARNING, "Invalid message: %s\n", str);
 	}
 	return (TRUE);
 }
@@ -280,11 +313,11 @@ static void check_backup(Host *host, AppData *app_data){
 static void ping_host(Host *host, AppData *app_data){
 	if (host_is_on_schedule(host)){
 		if (host_is_online(host)){
-			g_print("Host \"%s\" is on schedule and online: %s\n", host_get_name(host), host_get_ip(host));
+			syslog(LOG_NOTICE, "Host \"%s\" is on schedule and online: %s\n", host_get_name(host), host_get_ip(host));
 			check_backup(host, app_data);
 		}
 		else {
-			g_print("Host \"%s\" is on schedule but offline\n", host_get_name(host));
+			syslog(LOG_NOTICE, "Host \"%s\" is on schedule but offline\n", host_get_name(host));
 		}
 	}
 	else {
@@ -320,7 +353,7 @@ static gboolean read_config(AppData *app_data){
 
 	config_init(&app_data->config);
 	if (config_read_file(&app_data->config, CONFIG_FILE) == CONFIG_FALSE){
-		g_printerr("Failed to read configuration\n");
+		syslog(LOG_ERR, "Failed to read configuration\n");
 		return (FALSE);
 	}
 
@@ -338,7 +371,7 @@ static gboolean read_config(AppData *app_data){
 				app_data->hosts = g_list_append(app_data->hosts, host);
 			}
 			else {
-				g_printerr("Failed to read Host from config\n");
+				syslog(LOG_WARNING, "Failed to read Host from config\n");
 			}
 		}
 		else break;
@@ -350,6 +383,7 @@ static gboolean read_config(AppData *app_data){
 }
 
 static void reload(gint nr){
+	syslog(LOG_WARNING, "reload is not implemented yet, sorry...!\n");
 	return;
 }
 
@@ -447,7 +481,7 @@ int main(int argc, char **argv){
 	app_data_aux_ptr = app_data;
 
 	if (!read_config(app_data)){
-		g_printerr("Failed to read config file \"%s\" or no hosts configured.\n", CONFIG_FILE);
+		syslog(LOG_ERR, "Failed to read config file \"%s\" or no hosts configured.\n", CONFIG_FILE);
 		exit(-1);
 	}
 
@@ -464,8 +498,9 @@ int main(int argc, char **argv){
 
 	wakeup(app_data);
 
-	g_timeout_add(1000 * WAKEUP_INTERVAL, (GSourceFunc)wakeup, app_data);
-	g_idle_add((GSourceFunc)do_backup, app_data);
+	g_timeout_add_seconds(WAKEUP_INTERVAL, (GSourceFunc)wakeup, app_data);
+//	g_idle_add((GSourceFunc)do_backup, app_data);
+	g_timeout_add_seconds(1, (GSourceFunc)do_backup, app_data);
 
 	main_loop = g_main_loop_new(NULL, FALSE);
 	g_main_loop_run(main_loop);

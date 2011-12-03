@@ -4,9 +4,15 @@
 #
 #
 
-NAME=busyd
-DAEMON=/usr/local/bin/$NAME
+NAME=busy
+DAEMON=/usr/local/bin/busyd
 DESC="Centralized LAN backup system"
+
+if [ $(whoami) != "root" ] ; then
+	echo "This script must be run as root. Exiting."
+	exit
+fi
+
 
 [ -x "$DAEMON" ] || exit 0
 
@@ -15,21 +21,18 @@ case "$1" in
 		echo -n "Starting $NAME"
 		$DAEMON
 		if [ $? -eq 0 ] ; then
-			echo "[OK]"
+			echo " [OK]"
 		else
-			echo "[FAIL]"
+			echo " [FAIL]"
 			exit -1
 		fi
 		;;
 	
 	stop)
 		echo "Stopping $NAME"
-		for FILE in /var/lock/busy/* ; do
-			PID=$(basename "${FILE}")
-			kill -9 ${PID}
-			rm "${FILE}"
-		done
-		echo "[DONE]"
+		killall -9 busyd
+		rm -f /var/lock/busy/*
+		echo " [DONE]"
 		;;
 	
 	reload|restart)

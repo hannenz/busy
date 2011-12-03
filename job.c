@@ -1,5 +1,6 @@
 #include <sys/wait.h>
 #include "job.h"
+#include "busy.h"
 
 enum{
 	PROP_0,
@@ -127,7 +128,7 @@ void job_run(Job *job){
 	const gchar *ip;
 	ip = host_get_ip(host);
 	if (g_strcmp0(ip, "127.0.0.1")){
-		src = g_strdup_printf("root@%s:%s", ip, job_get_srcdir(job));
+		src = g_strdup_printf("%s@%s:%s", USER, ip, job_get_srcdir(job));
 	}
 	else{
 		src = g_strdup(job_get_srcdir(job));
@@ -138,7 +139,7 @@ void job_run(Job *job){
 	argv[argc++] = logfileparam;
 
 	if (g_mkdir_with_parents(dest, 0755) == -1){
-		g_print("Couldn't create directory: %s %s\n", dest, g_strerror(errno));
+		syslog(LOG_WARNING, "Couldn't create directory: %s %s\n", dest, g_strerror(errno));
 		return;
 	}
 
@@ -155,7 +156,7 @@ void job_run(Job *job){
 	GPid pid;
 	gint stdin, stdout, stderr;
 	if (!g_spawn_async_with_pipes(NULL, argv, NULL, G_SPAWN_DO_NOT_REAP_CHILD, NULL, NULL, &pid, &stdin, &stdout, &stderr, &error)){
-		g_print("Spawning process failed: %s\n", error->message);
+		syslog(LOG_WARNING, "Spawning process failed: %s\n", error->message);
 	}
 	else {
 		g_object_set(G_OBJECT(job), "state", BUS_JOB_RUNNING, "started", time(NULL), "pid", pid, NULL);

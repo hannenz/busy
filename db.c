@@ -1,4 +1,6 @@
 #include "db.h"
+#include <syslog.h>
+
 
 gchar *time_t_to_datetime_str(time_t time){
 	gchar str[24];
@@ -15,13 +17,13 @@ MYSQL *db_connect(const gchar *login, const gchar *password){
 		if (mysql){
 			my_bool reconnect = 1;
 			mysql_options(mysql, MYSQL_OPT_RECONNECT, &reconnect);
-			g_print("Connected to MySQL Database.\n");
+			syslog(LOG_NOTICE, "Connected to MySQL Database.\n");
 			return (mysql);
 		}
 	}
 
 	mysql = NULL;
-	g_print("Connection to MySQL Database failed.\n");
+	syslog(LOG_ERR, "Connection to MySQL Database failed.\n");
 	return (NULL);
 }
 

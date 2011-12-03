@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <glib/gstdio.h>
 #include "backup.h"
+#include "busy.h"
 
 enum{
 	PROP_0,
@@ -77,7 +78,7 @@ static void backup_finalize (GObject *object) {
 		//~ g_print("--- ERROR: g_rename(%s, %s) failed: %s\n", backup->logfile_name->str, new_logfile, g_strerror(errno));
 	//~ }
 	if (g_chmod(new_logfile, 0644) != 0){
-		g_print("--- ERROR: g_chmod(%s, 0644) failed: %s\n", new_logfile, g_strerror(errno));
+		syslog(LOG_WARNING, "g_chmod(%s, 0644) failed: %s\n", new_logfile, g_strerror(errno));
 	}
 	g_free(new_logfile);
 

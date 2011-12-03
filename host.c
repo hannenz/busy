@@ -3,6 +3,7 @@
 #include <ctype.h>
 #include <glib/gstdio.h>
 #include "host.h"
+#include "busy.h"
 
 enum{
 	PROP_0,
@@ -46,7 +47,7 @@ static void host_init (Host *object){
 
 static void host_finalize (GObject *object) {
 	Host *host = BUS_HOST(object);
-	g_print("Finalizing host: %s\n", host->name->str);
+	syslog(LOG_NOTICE, "Finalizing host: %s\n", host->name->str);
 	g_string_free(host->name, TRUE);
 	g_string_free(host->hostname, TRUE);
 	g_string_free(host->rsync_opts, TRUE);
@@ -191,7 +192,7 @@ Host *host_new_from_config_setting(config_t *config, config_setting_t *cs){
 				host_add_ip(host, s);
 			}
 			else {
-				g_printerr("Invalid IP: %s, skipping...\n", s);
+				syslog(LOG_WARNING, "Invalid IP: %s, skipping...\n", s);
 			}
 		}
 	}
@@ -207,7 +208,7 @@ Host *host_new_from_config_setting(config_t *config, config_setting_t *cs){
 				host_add_schedule(host, s);
 			}
 			else {
-				g_printerr("Invalid Schedule Time: %s, skipping...\n", s);
+				syslog(LOG_WARNING, "Invalid Schedule Time: %s, skipping...\n", s);
 			}
 		}
 	}
@@ -359,7 +360,7 @@ void host_remove_incr_backups(Host *host){
 			if (g_str_has_suffix(name, "i")){
 				gchar *dpath;
 				dpath = g_build_filename(path, name, NULL);
-				g_print("Removing backup: %s\n", dpath);
+				syslog(LOG_NOTICE, "Removing backup: %s\n", dpath);
 				delete_folder_tree(dpath);
 				g_free(dpath);
 			}
@@ -508,7 +509,7 @@ gboolean host_ping(Host *host, gchar *ip){
 		return (WEXITSTATUS(status) == 0);
 	}
 	else {
-		g_printerr("spawn_async() failed: %s", error->message);
+		syslog(LOG_ERR, "spawn_async() failed: %s", error->message);
 		g_error_free(error);
 	}
 	return (FALSE);
@@ -524,7 +525,7 @@ gchar *host_retrieve_hostname(Host *host, gchar *ip){
 	gchar *argv[6];
 	argv[0] = "/usr/bin/ssh";
 	argv[1] = "-l";
-	argv[2] = "root";
+	argv[2] = USER;
 	argv[3] = ip;
 	argv[4] = "hostname";
 	argv[5] = NULL;
@@ -538,7 +539,7 @@ gchar *host_retrieve_hostname(Host *host, gchar *ip){
 		}
 	}
 	else {
-		g_printerr("spawn_async() failed: %s", error->message);
+		syslog(LOG_ERR, "spawn_async() failed: %s", error->message);
 		g_error_free(error);
 	}
 	return (NULL);
