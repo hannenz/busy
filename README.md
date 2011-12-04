@@ -18,7 +18,7 @@ BUSY will backup itself (the host it is running on) - just configure `localhost`
 
 ## Dependencies
 
-In order to compile BUSY, you need `glib` and `libmysql` libraries.
+In order to compile BUSY, you need `glib`, `libconfig` and `libmysql` libraries.
 In order to run BUSY you need `SSH`, `netcat` and `hostname` installed
 
 ## Installation
