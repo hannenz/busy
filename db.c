@@ -146,26 +146,108 @@ gint db_job_update(Job *job, MYSQL *mysql){
 
 gint db_hosts_store(GList *hosts, MYSQL *mysql){
 	gchar *query;
-	GList *ptr;
+	GList *ptr, *ptr2;
 	Host *host;
 	gint ret;
 	
-	query = g_strdup_printf("DELETE FROM `hosts` WHERE 1");
-	if ((ret = mysql_real_query(mysql, query, strlen(query))) != 0){
-		syslog (LOG_ERR, "MySQL Query failed: %s (%d: %s)", query, ret, mysql_error(mysql));
-	}
-	g_free(query);	
+	GString
+		*schedule,
+		*excludes,
+		*ips,
+		*srcdirs;
+	;
 	
 	for (ptr = hosts; ptr != NULL; ptr = ptr->next){
 		host = ptr->data;
-		query = g_strdup_printf("INSERT INTO `hosts` (`name`, `hostname`, `max_incr`, `max_age_full`, `max_age_incr`, `backupdir`) VALUES ('%s', '%s', '%d', '%.5f', '%.5f', '%s')",
-			host_get_name(host),
-			host_get_hostname(host),
-			host_get_max_incr(host),
-			host_get_max_age_full(host),
-			host_get_max_age_incr(host),
-			host_get_backupdir(host)
-		);
+		
+		schedule = g_string_new(NULL);
+		for (ptr2 = host->schedule ; ptr2 != NULL ; ptr2 = ptr2->next){
+			schedule = g_string_append(schedule, ptr2->data);
+			schedule = g_string_append(schedule, "\n");
+		}
+		
+		excludes = g_string_new(NULL);
+		for (ptr2 = host->excludes ; ptr2 != NULL ; ptr2 = ptr2->next){
+			excludes = g_string_append(excludes, ptr2->data);
+			excludes = g_string_append(excludes, "\n");
+		}
+
+		srcdirs = g_string_new(NULL);
+		for (ptr2 = host->srcdirs ; ptr2 != NULL ; ptr2 = ptr2->next){
+			srcdirs = g_string_append(srcdirs, ptr2->data);
+			srcdirs = g_string_append(srcdirs, "\n");
+		}
+
+		ips = g_string_new(NULL);
+		for (ptr2 = host->ips ; ptr2 != NULL ; ptr2 = ptr2->next){
+			ips = g_string_append(ips, ptr2->data);
+			ips = g_string_append(ips, "\n");
+		}
+		
+		MYSQL_RES *result;
+		MYSQL_ROW row;
+
+		query = g_strdup_printf("SELECT * FROM `hosts` WHERE `name`=\"%s\";", host_get_name(host));
+
+		ret = mysql_real_query(mysql, query, strlen(query));
+
+		g_free(query);
+
+		if (ret != 0){
+			syslog (LOG_ERR, "MySQL Query failed: %s (%d: %s)", query, ret, mysql_error(mysql));
+			continue;
+		}
+
+		result = mysql_store_result(mysql);
+
+		gint n;
+		n = mysql_num_rows(result);
+		if (n > 1){
+			query = g_strdup_printf("DELETE FROM `hosts` WHERE `name`=\"%s\"", host_get_name(host));
+			mysql_real_query(mysql, query, strlen(query));
+			g_free(query);
+			n = 0;
+		}
+		
+		switch (n){
+			case 1:
+				row = mysql_fetch_row(result);
+				query = g_strdup_printf("UPDATE `hosts` SET `name`='%s', `hostname`='%s', `max_incr`='%u', `max_age_full`='%f', `max_age_incr`='%f', `backupdir`='%s', `schedule`='%s', `excludes`='%s', `ips`='%s', `srcdirs`='%s' WHERE id='%u'",
+					host_get_name(host),
+					host_get_hostname(host),
+					host_get_max_incr(host),
+					host_get_max_age_full(host),
+					host_get_max_age_incr(host),
+					host_get_backupdir(host),
+					schedule->str,
+					excludes->str,
+					ips->str,
+					srcdirs->str,
+					atoi(row[0])
+				);
+				break;
+				
+			case 0:
+				query = g_strdup_printf("INSERT INTO `hosts` (`name`, `hostname`, `max_incr`, `max_age_full`, `max_age_incr`, `backupdir`, `schedule`, `excludes`, `ips`, `srcdirs`) VALUES ('%s', '%s', '%d', '%.5f', '%.5f', '%s', '%s', '%s', '%s', '%s')",
+					host_get_name(host),
+					host_get_hostname(host),
+					host_get_max_incr(host),
+					host_get_max_age_full(host),
+					host_get_max_age_incr(host),
+					host_get_backupdir(host),
+					schedule->str,
+					excludes->str,
+					ips->str,
+					srcdirs->str
+				);
+				break;
+				
+			default:
+				break;
+		
+		}
+		mysql_free_result(result);
+		
 		if ((ret = mysql_real_query(mysql, query, strlen(query))) != 0){
 			syslog (LOG_ERR, "MySQL Query failed: %s (%d: %s)", query, ret, mysql_error(mysql));
 		}
