@@ -27,6 +27,15 @@ install:
 	[ -e /etc/rc0.d/k23busy ] || ln -s /etc/init.d/busy /etc/rc0.d/k23busy
 	[ -e /etc/rc6.d/k23busy ] || ln -s /etc/init.d/busy /etc/rc6.d/k23busy
 	
+installwebfrontend:
+	mkdir -p /var/www/busy
+	cp -Ra webfrontend/busy/* /var/www/busy/
+	cp webfrontend/busy/.htaccess /var/www/busy/
+	
+	#FIXME!
+	# Create MySQL Databes and tables...
+	
+	
 uninstall:
 
 	#kill any running daemons
