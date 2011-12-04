@@ -18,7 +18,7 @@ BUSY runs without user interaction (daemon) but there is a web frontend which ca
 
 ### How BUSY works
 
-- BUSY daemon wakes up and checks for clients that are online and on schedule
+- BUSY daemon wakes up periodically and checks for clients that are online and on schedule
 
 - if any, it checks, if this client(s) need a fresh backup and if yes, what tpye (full or incremental)
 
@@ -28,7 +28,7 @@ BUSY runs without user interaction (daemon) but there is a web frontend which ca
 
 - For each backup's source directory, BUSY creates a JOB. A Job is indeed a Rsync call. BUSY logs in via SSH to the client that needs to be backuped and issues the desired Rsync command on the client where the rsync destination is locatet back on the server.
 
-- Everything is optinally logged in a MySQL database where the Web Frontend reads out toi monitor the whole backup status of all of your clients.
+- Everything is (optionally) logged in a MySQL database where the web frontend reads out to monitor the whole backup status of all of your clients.
 
 
 ## Dependencies
@@ -150,7 +150,7 @@ rsync_opts : 	you can specify the options passed to rsync here. The defaults are
 ~~~
 
 Next follows a list of clients, where all of the above settings can be overriden per host.
-In this section, give each host a name (identifier) and the hostname. This must be the hostname that is printed out by the hostname command on that client.
+In this section, give each host a name (identifier) and the hostname. This must be the hostname that is printed out by the `hostname` command on that client (see above).
 
 # Web interface
 
@@ -158,9 +158,5 @@ I have written a simple web interface for busy which shows nice formatted status
 To use it, you will need a running web server (apache) and MySQL.
 PHP must be able to issue the `exec` command (safe mode off)
 
-Create a table...
-
-bla bla
-
-
+The web frontend is __not yet__ included in the repository. Please stay tuned....
 
