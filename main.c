@@ -71,14 +71,14 @@ static void cleanup(){
 /* Called when a backup is queued
  */
 static void on_backup_queued(Backup *backup, time_t queued, AppData *app_data){
-	syslog(LOG_DEBUG, "Received Signal: Backup queued: %s backup for host \"%s\"\n", backup_get_backup_type_str(backup), host_get_name(backup_get_host(backup)));
+	syslog(LOG_INFO, "Received Signal: Backup queued: %s backup for host \"%s\"\n", backup_get_backup_type_str(backup), host_get_name(backup_get_host(backup)));
 	db_backup_update(backup, "queued", time_t_to_datetime_str(queued), app_data->mysql);
 }
 
 /* Called when a backup starts
  */
 static void on_backup_started(Backup *backup, time_t started, AppData *app_data){
-	syslog(LOG_DEBUG, "Received Signal: Backup started: %s\n", host_get_name(backup_get_host(backup)));
+	syslog(LOG_INFO, "Received Signal: Backup started: %s\n", host_get_name(backup_get_host(backup)));
 	db_backup_update(backup, "started", time_t_to_datetime_str(started), app_data->mysql);
 }
 
@@ -87,7 +87,7 @@ static void on_backup_started(Backup *backup, time_t started, AppData *app_data)
 static void on_backup_finished(Backup *backup, time_t finished, AppData *app_data){
 	gchar *s;
 
-	syslog(LOG_DEBUG, "Received Signal: Backup finished: %s\n", host_get_name(backup_get_host(backup)));
+	syslog(LOG_INFO, "Received Signal: Backup finished: %s\n", host_get_name(backup_get_host(backup)));
 
 	// Update database record
 	db_backup_update(backup, "finished", time_t_to_datetime_str(finished), app_data->mysql);
@@ -124,14 +124,14 @@ static void on_backup_failure(Backup *backup, gint failures, AppData *app_data){
 /* Called when a backup starts a job
  */
 static void on_backup_job_started(Backup *backup, Job *job, AppData *app_data){
-	syslog(LOG_DEBUG, "Received Signal: Job Started: %u (%s on Host \"%s\")\n", job_get_pid(job), job_get_srcdir(job), job_get_hostname(job));
+	syslog(LOG_INFO, "Received Signal: Job Started: %u (%s on Host \"%s\")\n", job_get_pid(job), job_get_srcdir(job), job_get_hostname(job));
 	job_set_mysql_id(job, db_job_add(job, app_data->mysql));
 }
 
 /* Called when a job finishes
  */
 static void on_backup_job_finished(Backup *backup, Job *job, AppData *app_data){
-	syslog(LOG_DEBUG, "Received Signal: Job Finished: %u (%s on Host \"%s\")\n", job_get_pid(job), job_get_srcdir(job), job_get_hostname(job));
+	syslog(LOG_INFO, "Received Signal: Job Finished: %u (%s on Host \"%s\")\n", job_get_pid(job), job_get_srcdir(job), job_get_hostname(job));
 	db_job_update(job, app_data->mysql);
 }
 
@@ -244,6 +244,10 @@ static gboolean find_by_name(Host *host, const gchar *name){
 	return (g_strcmp0(name, host_get_name(host)));
 }
 
+/* Find a host by its name
+ * 
+ * Looks up a host by its name in list of hosts
+ */
 static Host *host_find_by_name(const gchar *name, AppData *app_data){
 	GList *el;
 	g_return_val_if_fail(app_data != NULL, NULL);
@@ -254,23 +258,39 @@ static Host *host_find_by_name(const gchar *name, AppData *app_data){
 	return (NULL);
 }
 
-
+/* Get age for date string
+ *
+ * Returns the age in days for a given date string in the format that is
+ * used for backup directory names
+ */
 static gdouble get_age(const gchar *str){
 	struct tm ti;
 	if (str != NULL){
+		// Scan string into time_t structure
 		if (sscanf(str, "%4u-%2u-%2u_%2u-%2u-%2u", &ti.tm_year, &ti.tm_mon, &ti.tm_mday, &ti.tm_hour, &ti.tm_min, &ti.tm_sec) == 6){
+			// Adjust year and month
 			ti.tm_year -= 1900;
 			ti.tm_mon--;
+			// Get difference, calc fract. of days (86400 seconds) and return it
 			return (difftime(time(NULL), mktime(&ti)) / 86400);
 		}
 	}
+	// str == NULL returns "very old ;)"
 	return (99999);
 }
 
+/* Add backup to queue
+ *
+ * Creates a new backup, sets up all signals and adds it to
+ * the backup queue
+ */
 static void queue_backup(Host *host, BusBackupType type, AppData *app_data){
 	Backup *backup;
 
+	// Create a new backup
 	backup = backup_new_for_host(host);
+	
+	// Setup signal handlers
 	g_signal_connect(G_OBJECT(backup), "queued", (GCallback)on_backup_queued, app_data);
 	g_signal_connect(G_OBJECT(backup), "started", (GCallback)on_backup_started, app_data);
 	g_signal_connect(G_OBJECT(backup), "finished", (GCallback)on_backup_finished, app_data);
@@ -279,57 +299,86 @@ static void queue_backup(Host *host, BusBackupType type, AppData *app_data){
 	g_signal_connect(G_OBJECT(backup), "job_started", (GCallback)on_backup_job_started, app_data);
 	g_signal_connect(G_OBJECT(backup), "job_finished", (GCallback)on_backup_job_finished, app_data);
 
+	// Set type & state
 	backup_set_backup_type(backup, type);
 	backup_set_queued(backup, time(NULL));
 	backup_set_state(backup, BUS_BACKUP_STATE_QUEUED);
+	
+	// Emit signal "queued"
 	g_signal_emit_by_name(G_OBJECT(backup), "queued", backup_get_queued(backup));
 
+	// Set mysql id
 	backup_set_mysql_id(backup, db_backup_insert(backup, app_data->mysql));
+	
+	// Append to queue
 	g_queue_push_tail(app_data->queue, backup);
 }
 
+/* Check if backup is needed for host
+ * Called by ping_host, if a host is online and on schedule.
+ * This function checks if a backup is actually needed, e.g. if the youngest
+ * full/incr backup is older than specified in the host's configuration
+ * OR if the max nr of incr backups has been exceeded (--> full backup needed).
+ * Adds backups to the queue accordingly.
+ */
 static void check_backup(Host *host, AppData *app_data){
 	Backup *backup = NULL;
 	BusBackupType type;
 	ExistingBackup *youngest, *youngest_full;
 
 	youngest_full = NULL;
+	
+	// Get youngest backup for host
 	youngest = host_get_youngest_backup(host, BUS_BACKUP_TYPE_ANY);
 
+	// No backup at all or youngest backup older than max_age_incr, then
+	// we need at least an incremental backup
 	if (!youngest || youngest->age >= host_get_max_age_incr(host)){
 		type = BUS_BACKUP_TYPE_INCREMENTAL;
 
+		// Get youngest full backup
 		youngest_full = host_get_youngest_backup(host, BUS_BACKUP_TYPE_FULL);
+		// No full backup at all or too much incremental backups or youngest full backup too old
 		if (!youngest_full || host_get_n_incr(host) >= host_get_max_incr(host) || youngest_full->age >= host_get_max_age_full(host)){
+			// We need a full backup!
 			type = BUS_BACKUP_TYPE_FULL;
 		}
 		host_free_existing_backup(youngest_full);
 
-		syslog(LOG_DEBUG, "%s needs a %s backup\n", host_get_hostname(host), type == BUS_BACKUP_TYPE_FULL ? "full" : "incremental");
+		// Queue the needed backup
+		syslog(LOG_INFO, "%s needs a %s backup\n", host_get_hostname(host), type == BUS_BACKUP_TYPE_FULL ? "full" : "incremental");
 		queue_backup(host, type, app_data);
 	}
 	else {
-		syslog(LOG_DEBUG, "%s doesn't need a backup right now\n", host_get_hostname(host));
+		// No need for a backup
+		syslog(LOG_INFO, "%s doesn't need a backup right now\n", host_get_hostname(host));
 	}
 	host_free_existing_backup(youngest);
 }
 
 
+/* Check if host is online and on schedule
+ * called by main function to see if a host is online and on schedule
+ * for backup
+ */
 static void ping_host(Host *host, AppData *app_data){
 	if (host_is_on_schedule(host)){
 		if (host_is_online(host)){
-			syslog(LOG_DEBUG, "Host \"%s\" is on schedule and online: %s\n", host_get_name(host), host_get_ip(host));
+			syslog(LOG_INFO, "Host \"%s\" is on schedule and online: %s\n", host_get_name(host), host_get_ip(host));
 			check_backup(host, app_data);
 		}
 		else {
-			syslog(LOG_DEBUG, "Host \"%s\" is on schedule but offline\n", host_get_name(host));
+			syslog(LOG_INFO, "Host \"%s\" is on schedule but offline\n", host_get_name(host));
 		}
 	}
 	else {
-		syslog(LOG_DEBUG, "Host \"%s\" is not on schedule\n", host_get_name(host));
+		syslog(LOG_INFO, "Host \"%s\" is not on schedule\n", host_get_name(host));
 	}
 }
 
+/* Processes the queue
+ * Called periodically and processes the backup queue
+ */
 static gboolean do_backup(AppData *app_data){
 	Backup *backup;
 
@@ -339,13 +388,18 @@ static gboolean do_backup(AppData *app_data){
 	return (TRUE);
 }
 
+/* Main function
+ * Called periodically to check for backups and queuing them if
+ * necessary
+ */
 static gboolean wakeup(AppData *app_data){
-	syslog(LOG_DEBUG, "Waking up...\n");
+//	syslog(LOG_NOTICE, "Waking up...\n");
 	g_list_foreach(app_data->hosts, (GFunc)ping_host, app_data);
 	return (TRUE);
 }
 
-
+/* Read configuration
+ */
 static gboolean read_config(AppData *app_data){
 	Host *host;
 	gint i = 0;
@@ -388,18 +442,22 @@ static gboolean read_config(AppData *app_data){
 	return (g_list_length(app_data->hosts) > 0);
 }
 
+/* Reload configuration
+ */
 static void reload(gint nr){
 	AppData *app_data = app_data_aux_ptr;
 	GList *ptr;
 	Host *host;
 	
 	syslog(LOG_NOTICE, "Reloading configuration");
-	
+
+	// Destroy all hosts	
 	for (ptr = app_data->hosts; ptr != NULL; ptr = ptr->next){
 		host = ptr->data;
 		g_object_unref(host);
 	}
 	
+	// Read configuration
 	if (!read_config(app_data)){
 		syslog(LOG_ERR, "Failed to (re)load configuration! Sorry, but this means i mus exit now!");
 		exit(-1);
@@ -468,13 +526,6 @@ static void start_daemon(const gchar *log_name, gint facility){
 
 	GString *lockfilename;
 
-/*
-	pid = getpid();
-	lockfilename = g_string_new(NULL);
-	g_string_printf(lockfilename, "/var/lock/busy/%u", pid);
-	g_file_set_contents(lockfilename->str, "busy", -1, NULL);
-	g_string_free(lockfilename, TRUE);
-*/
 }
 
 
@@ -486,45 +537,54 @@ int main(int argc, char **argv){
 	AppData *app_data;
 	GError *error = NULL;
 
+	// Init 
 	g_set_prgname(argv[0]);
 	g_mem_set_vtable(glib_mem_profiler_table);
 	g_type_init();
 
-
+	// Start the daemon
 	start_daemon(g_get_prgname(), LOG_LOCAL0);
 	syslog(LOG_NOTICE, "-----------------------------------\n");
 	syslog(LOG_NOTICE, "Daemon has been started\n");
 
-
 	atexit(cleanup);
 
+	// Initialize App Data structire
 	app_data = g_slice_new0(AppData);
 	app_data->queue = g_queue_new();
 	app_data->hosts = NULL;
+	
+	// For global access to app_data
 	app_data_aux_ptr = app_data;
 
+	// Read configuration
 	if (!read_config(app_data)){
 		syslog(LOG_ERR, "Failed to read config file \"%s\" or no hosts configured.\n", CONFIG_FILE);
 		exit(-1);
 	}
 
+	// Setup listener for incoming TCP (localhost port 4000)
 	service = g_socket_service_new();
 	iaddr = g_inet_address_new_from_string("127.0.0.1");
 	saddr = g_inet_socket_address_new(iaddr, 4000);
 	g_socket_listener_add_address(G_SOCKET_LISTENER(service), saddr, G_SOCKET_TYPE_STREAM, G_SOCKET_PROTOCOL_TCP, NULL, NULL, &error);
-
 	g_object_unref(iaddr);
 	g_object_unref(saddr);
-
 	g_socket_service_start(service);
 	g_signal_connect(service, "incoming", (GCallback)on_incoming, app_data);
 
+
+	// Call main function once
 	wakeup(app_data);
 
+	// Check preiodically for backups
 	g_timeout_add_seconds(WAKEUP_INTERVAL, (GSourceFunc)wakeup, app_data);
+
+	// Process queue periodically
 //	g_idle_add((GSourceFunc)do_backup, app_data);
 	g_timeout_add_seconds(1, (GSourceFunc)do_backup, app_data);
 
+	// Run main loop
 	main_loop = g_main_loop_new(NULL, FALSE);
 	g_main_loop_run(main_loop);
 
