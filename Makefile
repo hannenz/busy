@@ -2,7 +2,10 @@ CC = gcc
 OBJECTS = main.o host.o backup.o job.o db.o
 LIBS = `pkg-config --libs libconfig glib-2.0 gio-2.0` -L/usr/lib/mysql -lmysqlclient
 CFLAGS = `pkg-config --cflags libconfig glib-2.0` -I/usr/include/mysql
-PREFIX=/usr/local/bin/
+PREFIX=/usr/sbin
+CONFDIR=/etc/busy
+BACKUPDIR=/var/backups
+
 
 busyd: $(OBJECTS)
 	$(CC) -Wall -g -o $@ $(OBJECTS) $(LIBS)
@@ -11,23 +14,25 @@ busyd: $(OBJECTS)
 	$(CC) -Wall -g -c $(CFLAGS) $<
 
 install:
-	mkdir -p /var/lock/busy
-	mkdir -p /var/backups
-	mkdir -p /etc/busy
+	test -d "${BACKUPDIR}" || mkdir -p "${BACKUPDIR}"
+	test -d "${CONFDIR}" || mkdir -p "${CONFDIR}"
 
 	cp ./busyd ${PREFIX}
 	cp ./init.d/busy /etc/init.d/
-	cp ./conf/busy.conf /etc/busy/
+	cp ./conf/busy.conf ${CONFDIR}
 	chmod +x /etc/init.d/busy
 
+	# Make links in rc.d
 	[ -e /etc/rc2.d/S23busy ] || ln -s /etc/init.d/busy /etc/rc2.d/S23busy
 	[ -e /etc/rc0.d/k23busy ] || ln -s /etc/init.d/busy /etc/rc0.d/k23busy
 	[ -e /etc/rc6.d/k23busy ] || ln -s /etc/init.d/busy /etc/rc6.d/k23busy
 	
 uninstall:
+
+	#kill any running daemons
 	killall -9 busyd || echo "Nothing to kill"
-	rm -rf /var/lock/busy
-	rm -rf /etc/busy
+
+	rm -rf "${CONFDIR}"
 	rm -f ${PREFIX}/busyd
 	rm -f /etc/init.d/busy
 	rm -f /etc/rc2.d/S23busy

@@ -71,14 +71,14 @@ static void cleanup(){
 /* Called when a backup is queued
  */
 static void on_backup_queued(Backup *backup, time_t queued, AppData *app_data){
-	syslog(LOG_NOTICE, "Received Signal: Backup queued: %s backup for host \"%s\"\n", backup_get_backup_type_str(backup), host_get_name(backup_get_host(backup)));
+	syslog(LOG_DEBUG, "Received Signal: Backup queued: %s backup for host \"%s\"\n", backup_get_backup_type_str(backup), host_get_name(backup_get_host(backup)));
 	db_backup_update(backup, "queued", time_t_to_datetime_str(queued), app_data->mysql);
 }
 
 /* Called when a backup starts
  */
 static void on_backup_started(Backup *backup, time_t started, AppData *app_data){
-	syslog(LOG_NOTICE, "Received Signal: Backup started: %s\n", host_get_name(backup_get_host(backup)));
+	syslog(LOG_DEBUG, "Received Signal: Backup started: %s\n", host_get_name(backup_get_host(backup)));
 	db_backup_update(backup, "started", time_t_to_datetime_str(started), app_data->mysql);
 }
 
@@ -87,7 +87,7 @@ static void on_backup_started(Backup *backup, time_t started, AppData *app_data)
 static void on_backup_finished(Backup *backup, time_t finished, AppData *app_data){
 	gchar *s;
 
-	syslog(LOG_NOTICE, "Received Signal: Backup finished: %s\n", host_get_name(backup_get_host(backup)));
+	syslog(LOG_DEBUG, "Received Signal: Backup finished: %s\n", host_get_name(backup_get_host(backup)));
 
 	// Update database record
 	db_backup_update(backup, "finished", time_t_to_datetime_str(finished), app_data->mysql);
@@ -124,14 +124,14 @@ static void on_backup_failure(Backup *backup, gint failures, AppData *app_data){
 /* Called when a backup starts a job
  */
 static void on_backup_job_started(Backup *backup, Job *job, AppData *app_data){
-	syslog(LOG_NOTICE, "Received Signal: Job Started: %u (%s on Host \"%s\")\n", job_get_pid(job), job_get_srcdir(job), job_get_hostname(job));
+	syslog(LOG_DEBUG, "Received Signal: Job Started: %u (%s on Host \"%s\")\n", job_get_pid(job), job_get_srcdir(job), job_get_hostname(job));
 	job_set_mysql_id(job, db_job_add(job, app_data->mysql));
 }
 
 /* Called when a job finishes
  */
 static void on_backup_job_finished(Backup *backup, Job *job, AppData *app_data){
-	syslog(LOG_NOTICE, "Received Signal: Job Finished: %u (%s on Host \"%s\")\n", job_get_pid(job), job_get_srcdir(job), job_get_hostname(job));
+	syslog(LOG_DEBUG, "Received Signal: Job Finished: %u (%s on Host \"%s\")\n", job_get_pid(job), job_get_srcdir(job), job_get_hostname(job));
 	db_job_update(job, app_data->mysql);
 }
 
@@ -227,6 +227,7 @@ static gboolean network_read(GIOChannel *channel, GIOCondition condition, gpoint
 		}
 	}
 	else if (g_strcmp0(token[0], "remove") == 0){
+		syslog(LOG_NOTICE, "Sorry, but this command is not implemented yet...\n");
 		//(token[1], token[2]);
 	}
 	else if (g_strcmp0(token[0], "stop") == 0){
@@ -304,7 +305,11 @@ static void check_backup(Host *host, AppData *app_data){
 		}
 		host_free_existing_backup(youngest_full);
 
+		syslog(LOG_DEBUG, "%s needs a %s backup\n", host_get_hostname(host), type == BUS_BACKUP_TYPE_FULL ? "full" : "incremental");
 		queue_backup(host, type, app_data);
+	}
+	else {
+		syslog(LOG_DEBUG, "%s doesn't need a backup right now\n", host_get_hostname(host));
 	}
 	host_free_existing_backup(youngest);
 }
@@ -313,15 +318,15 @@ static void check_backup(Host *host, AppData *app_data){
 static void ping_host(Host *host, AppData *app_data){
 	if (host_is_on_schedule(host)){
 		if (host_is_online(host)){
-			syslog(LOG_NOTICE, "Host \"%s\" is on schedule and online: %s\n", host_get_name(host), host_get_ip(host));
+			syslog(LOG_DEBUG, "Host \"%s\" is on schedule and online: %s\n", host_get_name(host), host_get_ip(host));
 			check_backup(host, app_data);
 		}
 		else {
-			syslog(LOG_NOTICE, "Host \"%s\" is on schedule but offline\n", host_get_name(host));
+			syslog(LOG_DEBUG, "Host \"%s\" is on schedule but offline\n", host_get_name(host));
 		}
 	}
 	else {
-		//~ g_print("Host \"%s\" is not on schedule\n", host_get_name(host));
+		syslog(LOG_DEBUG, "Host \"%s\" is not on schedule\n", host_get_name(host));
 	}
 }
 
@@ -335,6 +340,7 @@ static gboolean do_backup(AppData *app_data){
 }
 
 static gboolean wakeup(AppData *app_data){
+	syslog(LOG_DEBUG, "Waking up...\n");
 	g_list_foreach(app_data->hosts, (GFunc)ping_host, app_data);
 	return (TRUE);
 }
@@ -383,7 +389,22 @@ static gboolean read_config(AppData *app_data){
 }
 
 static void reload(gint nr){
-	syslog(LOG_WARNING, "reload is not implemented yet, sorry...!\n");
+	AppData *app_data = app_data_aux_ptr;
+	GList *ptr;
+	Host *host;
+	
+	syslog(LOG_NOTICE, "Reloading configuration");
+	
+	for (ptr = app_data->hosts; ptr != NULL; ptr = ptr->next){
+		host = ptr->data;
+		g_object_unref(host);
+	}
+	
+	if (!read_config(app_data)){
+		syslog(LOG_ERR, "Failed to (re)load configuration! Sorry, but this means i mus exit now!");
+		exit(-1);
+	}
+	syslog(LOG_NOTICE, "Configuration has been successfully reloaded");
 	return;
 }
 
@@ -447,11 +468,13 @@ static void start_daemon(const gchar *log_name, gint facility){
 
 	GString *lockfilename;
 
+/*
 	pid = getpid();
 	lockfilename = g_string_new(NULL);
 	g_string_printf(lockfilename, "/var/lock/busy/%u", pid);
 	g_file_set_contents(lockfilename->str, "busy", -1, NULL);
 	g_string_free(lockfilename, TRUE);
+*/
 }
 
 
