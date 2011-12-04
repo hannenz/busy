@@ -27,11 +27,16 @@ Download the archive and extract it. Run
 
 ~~~
 $ make
+~~~
+
+to compile. To install the daemon, run
+
+~~~
 # make install
 ~~~
 
-to compile and install the daemon.
-For now the init script is must be started manually by issuing
+This will install the daemon to `/usr/sbin`, setup initscript (`/etc/init.d/busy`) and config (`/etc/busy/busy.conf`)
+The initscript is symlinked to `/etc/rc0.d`, `/etc/rc2.d` and `/etc/rc6.d`, so it will be started at boot and stopped at shutdown or reboot (on a DEBIAN system; for other LINUX distributions, please adjust manually).
 
 ~~~
 #root@server# /etc/init.d/busyd start
