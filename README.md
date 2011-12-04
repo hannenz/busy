@@ -55,6 +55,7 @@ echo $HOSTNAME
 ~~~
 
 Make sure it is executable:
+
 ~~~
 root@server# chmod +x /bin/hostname
 ~~~
@@ -106,6 +107,7 @@ Configuration of hosts is done by editing the file `/etc/busy/busy.conf`:
 There are three sections. First is the MySQL setup. This is only needed if you want to use the web frontend. In this case enter the MySQL username and password to connect to MySQL. (Make sure you have created the database `busy` and the tables found in `webfrontend/busy.sql`).
 
 Next section defines default settings that are valid for all clients. The available settings are as follows:
+
 ~~~
 backupdir :		specify the directory where the backup shall be stored to.
 name : 			leave as 'default' in the default section
