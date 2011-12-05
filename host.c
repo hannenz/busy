@@ -96,18 +96,19 @@ Host *host_new_from_config_setting(config_t *config, config_setting_t *cs){
 	if (config_setting_lookup_string(cs, "name", &name) == CONFIG_FALSE){
 		name = NULL;
 	}
+	if (config_setting_lookup_string(cs, "hostname", &hostname) == CONFIG_FALSE){
+		hostname = NULL;
+	}
+
 	if (config_setting_lookup_string(cs, "backupdir", &backupdir) == CONFIG_FALSE){
 		if ((config_lookup_string(config, "default.backupdir", &backupdir)) == CONFIG_FALSE){
 			backupdir = NULL;
 		}
 	}
-	if (config_setting_lookup_string(cs, "hostname", &hostname) == CONFIG_FALSE){
-		hostname = NULL;
-	}
 	
 	if (config_setting_lookup_string(cs, "user", &user) == CONFIG_FALSE){
-		if (config_lookup_string(config, "default.user", &user) == CONFIG_FALSE){
-			user = g_strdup("root");
+		if ((config_lookup_string(config, "default.user", &user) == CONFIG_FALSE)){
+			user = NULL;
 		}
 	}
 	
@@ -147,6 +148,7 @@ Host *host_new_from_config_setting(config_t *config, config_setting_t *cs){
 		"backupdir", bdir,
 		"name", name,
 		"hostname", hostname,
+		"user", user,
 		"rsync_opts", rsync_opts,
 		"max_incr", max_incr,
 		"max_age_incr", max_age_incr,
@@ -834,7 +836,7 @@ static void host_class_init (HostClass *klass){
 									);
 	g_object_class_install_property (object_class,
 	                                 PROP_USER,
-	                                 g_param_spec_string("user", "user", "User", "", G_PARAM_READWRITE)
+	                                 g_param_spec_string("user", "user", "User", "root", G_PARAM_READWRITE)
 									);
 
 	host_signals[CREATED] = g_signal_new ("created", G_OBJECT_CLASS_TYPE (klass), G_SIGNAL_RUN_LAST, G_STRUCT_OFFSET (HostClass, created), NULL, NULL, g_cclosure_marshal_VOID__VOID, G_TYPE_NONE, 0);

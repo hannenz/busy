@@ -181,7 +181,7 @@ static void on_job_finished(Job *job, gint status, gpointer udata){
 	g_object_get(G_OBJECT(job), "pid", &pid, "srcdir", &srcdir, "backup", &backup, NULL);
 
 	backup_log(backup, "The job with PID %d (%s) has finished and returned %d", pid, srcdir, status);
-	syslog(LOG_NOTICE, "The job with PID %d (%s) has finished and returned %d", pid, srcdir, status);
+
 	g_signal_emit_by_name(G_OBJECT(backup), "job_finished", job);
 
 	if (status != 0){

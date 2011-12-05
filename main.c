@@ -74,14 +74,14 @@ static void cleanup(){
 /* Called when a backup is queued
  */
 static void on_backup_queued(Backup *backup, time_t queued, AppData *app_data){
-	syslog(LOG_INFO, "Received Signal: Backup queued: %s backup for host \"%s\"\n", backup_get_backup_type_str(backup), host_get_name(backup_get_host(backup)));
+	syslog(LOG_INFO, "Backup has been queued: %s backup for host \"%s\"\n", backup_get_backup_type_str(backup), host_get_name(backup_get_host(backup)));
 	db_backup_update(backup, "queued", time_t_to_datetime_str(queued), app_data->mysql);
 }
 
 /* Called when a backup starts
  */
 static void on_backup_started(Backup *backup, time_t started, AppData *app_data){
-	syslog(LOG_INFO, "Received Signal: Backup started: %s\n", host_get_name(backup_get_host(backup)));
+	syslog(LOG_INFO, "Backup has been started: %s\n", host_get_name(backup_get_host(backup)));
 	db_backup_update(backup, "started", time_t_to_datetime_str(started), app_data->mysql);
 }
 
@@ -90,7 +90,7 @@ static void on_backup_started(Backup *backup, time_t started, AppData *app_data)
 static void on_backup_finished(Backup *backup, time_t finished, AppData *app_data){
 	gchar *s;
 
-	syslog(LOG_INFO, "Received Signal: Backup finished: %s\n", host_get_name(backup_get_host(backup)));
+	syslog(LOG_INFO, "Backup has been finished: %s\n", host_get_name(backup_get_host(backup)));
 
 	// Update database record
 	db_backup_update(backup, "finished", time_t_to_datetime_str(finished), app_data->mysql);
@@ -127,14 +127,14 @@ static void on_backup_failure(Backup *backup, gint failures, AppData *app_data){
 /* Called when a backup starts a job
  */
 static void on_backup_job_started(Backup *backup, Job *job, AppData *app_data){
-	syslog(LOG_INFO, "Received Signal: Job Started: %u (%s on Host \"%s\")\n", job_get_pid(job), job_get_srcdir(job), job_get_hostname(job));
+	syslog(LOG_INFO, "Job has been started: %u (%s on Host \"%s\")\n", job_get_pid(job), job_get_srcdir(job), job_get_hostname(job));
 	job_set_mysql_id(job, db_job_add(job, app_data->mysql));
 }
 
 /* Called when a job finishes
  */
 static void on_backup_job_finished(Backup *backup, Job *job, AppData *app_data){
-	syslog(LOG_INFO, "Received Signal: Job Finished: %u (%s on Host \"%s\")\n", job_get_pid(job), job_get_srcdir(job), job_get_hostname(job));
+	syslog(LOG_INFO, "Job has been finished: %u (%s on Host \"%s\"), Exit code was: %u\n", job_get_pid(job), job_get_srcdir(job), job_get_hostname(job), job_get_exit_code(job));
 	db_job_update(job, app_data->mysql);
 }
 

@@ -144,13 +144,32 @@ gint db_job_update(Job *job, MYSQL *mysql){
 	return (ret == 0);
 }
 
+
+
+gchar *list_to_string(GList *list){
+	GList *p;
+	GString *string;
+	gchar *s;
+	
+	string = g_string_new(NULL);
+	
+	for (p = list; p != NULL; p = p->next){
+		string = g_string_append(string, p->data);
+		string = g_string_append(string, "\n");
+	}
+	s = string->str;
+	g_string_free(string, FALSE);
+	return (s);
+}
+
+
 gint db_hosts_store(GList *hosts, MYSQL *mysql){
 	gchar *query;
-	GList *ptr, *ptr2;
+	GList *ptr;
 	Host *host;
 	gint ret;
 	
-	GString
+	gchar
 		*schedule,
 		*excludes,
 		*ips,
@@ -159,30 +178,11 @@ gint db_hosts_store(GList *hosts, MYSQL *mysql){
 	
 	for (ptr = hosts; ptr != NULL; ptr = ptr->next){
 		host = ptr->data;
-		
-		schedule = g_string_new(NULL);
-		for (ptr2 = host->schedule ; ptr2 != NULL ; ptr2 = ptr2->next){
-			schedule = g_string_append(schedule, ptr2->data);
-			schedule = g_string_append(schedule, "\n");
-		}
-		
-		excludes = g_string_new(NULL);
-		for (ptr2 = host->excludes ; ptr2 != NULL ; ptr2 = ptr2->next){
-			excludes = g_string_append(excludes, ptr2->data);
-			excludes = g_string_append(excludes, "\n");
-		}
 
-		srcdirs = g_string_new(NULL);
-		for (ptr2 = host->srcdirs ; ptr2 != NULL ; ptr2 = ptr2->next){
-			srcdirs = g_string_append(srcdirs, ptr2->data);
-			srcdirs = g_string_append(srcdirs, "\n");
-		}
-
-		ips = g_string_new(NULL);
-		for (ptr2 = host->ips ; ptr2 != NULL ; ptr2 = ptr2->next){
-			ips = g_string_append(ips, ptr2->data);
-			ips = g_string_append(ips, "\n");
-		}
+		schedule = list_to_string(host->schedule);
+		excludes = list_to_string(host->excludes);
+		srcdirs = list_to_string(host->srcdirs);
+		ips = list_to_string(host->ips);
 		
 		MYSQL_RES *result;
 		MYSQL_ROW row;
@@ -219,10 +219,10 @@ gint db_hosts_store(GList *hosts, MYSQL *mysql){
 					host_get_max_age_full(host),
 					host_get_max_age_incr(host),
 					host_get_backupdir(host),
-					schedule->str,
-					excludes->str,
-					ips->str,
-					srcdirs->str,
+					schedule,
+					excludes,
+					ips,
+					srcdirs,
 					atoi(row[0])
 				);
 				break;
@@ -235,10 +235,10 @@ gint db_hosts_store(GList *hosts, MYSQL *mysql){
 					host_get_max_age_full(host),
 					host_get_max_age_incr(host),
 					host_get_backupdir(host),
-					schedule->str,
-					excludes->str,
-					ips->str,
-					srcdirs->str
+					schedule,
+					excludes,
+					ips,
+					srcdirs
 				);
 				break;
 				
@@ -252,6 +252,10 @@ gint db_hosts_store(GList *hosts, MYSQL *mysql){
 			syslog (LOG_ERR, "MySQL Query failed: %s (%d: %s)", query, ret, mysql_error(mysql));
 		}
 		g_free(query);
+		g_free(excludes);
+		g_free(ips);
+		g_free(schedule);
+		g_free(srcdirs);
 	}
 	return (0);
 }

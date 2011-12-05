@@ -153,7 +153,7 @@ void job_run(Job *job){
 	const gchar *ip;
 	ip = host_get_ip(host);
 	if (g_strcmp0(ip, "127.0.0.1")){
-		src = g_strdup_printf("%s@%s:%s", USER, ip, job_get_srcdir(job));
+		src = g_strdup_printf("%s@%s:%s", host_get_user(host), ip, job_get_srcdir(job));
 	}
 	else{
 		src = g_strdup(job_get_srcdir(job));
