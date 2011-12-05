@@ -105,6 +105,8 @@ void backup_set_mysql_id(Backup *backup, gint id);
 void backup_add_job(Backup *backup, Job *job);
 void backup_run(Backup *backup);
 
+GList *backup_get_jobs(Backup *backup);
+
 G_END_DECLS
 
 #endif /* _BACKUP_H_ */

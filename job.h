@@ -23,7 +23,8 @@ typedef enum {
 	BUS_JOB_UNDEFINED,
 	BUS_JOB_RUNNING,
 	BUS_JOB_SUCCESS,
-	BUS_JOB_FAILURE
+	BUS_JOB_FAILURE,
+	BUS_JOB_CANCELLED
 } BusJobState;
 
 #include "host.h"
@@ -84,6 +85,7 @@ void job_set_started(Job *job, time_t t);
 void job_set_finished(Job *job, time_t t);
 void job_set_exit_code(Job *job, gint code);
 void job_set_backup(Job *job, Backup *backup);
+void job_cancel(Job *job);
 
 
 G_END_DECLS

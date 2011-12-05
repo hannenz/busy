@@ -71,8 +71,21 @@ Job *job_new(Backup *backup, gchar *srcdir){
 
 
 void watch_job(GPid pid, gint status, Job *job){
-	g_object_set(G_OBJECT(job), "finished", time(NULL), "state", ((WEXITSTATUS(status) == 0) ? BUS_JOB_SUCCESS : BUS_JOB_FAILURE), NULL);
+
+	g_object_set(G_OBJECT(job),
+		"finished", time(NULL),
+		"state", ((WEXITSTATUS(status) == 0) ? BUS_JOB_SUCCESS : BUS_JOB_FAILURE),
+		NULL
+	);
 	g_signal_emit_by_name(G_OBJECT(job), "finished", WEXITSTATUS(status));
+
+	if (WIFEXITED(status)){
+		job_set_exit_code(job, WEXITSTATUS(status));
+	}
+	if (WIFSIGNALED(status)){
+		syslog(LOG_NOTICE, "Job has been terminated by signal %u", WTERMSIG(status));
+	}
+	
 //	g_object_unref(job);
 }
 
@@ -206,6 +219,24 @@ void job_dump(Job *job){
 	g_print("---------------------------------------\n");
 }
 
+
+void job_cancel(Job *job){
+	g_return_if_fail(BUS_IS_JOB(job));
+	
+	syslog(LOG_NOTICE, "Cancelling job \"%s\" on Host \"%s\"", job_get_srcdir(job), job_get_hostname(job));
+	
+	if (job_get_state(job) == BUS_JOB_RUNNING){
+		
+		GPid pid;
+		pid = job_get_pid(job);
+		if (pid > 0){
+			kill(pid, 15);
+			job_set_state(job, BUS_JOB_CANCELLED);
+		}
+	}
+}
+
+
 GPid job_get_pid(Job *job){
 	g_return_val_if_fail(BUS_IS_JOB(job), 0);
 	return (job->pid);
@@ -237,7 +268,8 @@ const gchar *job_get_state_str(Job *job){
 		"undefined",
 		"running",
 		"success",
-		"failure"
+		"failure",
+		"cancelled"
 	};
 	return (strings[job->state]);
 }

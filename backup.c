@@ -202,6 +202,17 @@ static void on_job_finished(Job *job, gint status, gpointer udata){
 	}
 }
 
+void backup_cancel(Backup *backup){
+	g_return_if_fail(BUS_IS_BACKUP(backup));
+	
+	GList *jobs, *p;
+	
+	jobs = backup_get_jobs(backup);
+	for (p = jobs; p != NULL; p = p->next){
+		job_cancel(p->data);
+	}
+}
+
 void backup_run(Backup *backup){
 	g_return_if_fail(BUS_IS_BACKUP(backup));
 

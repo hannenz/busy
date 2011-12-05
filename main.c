@@ -24,6 +24,7 @@
 typedef struct {
 	GList *hosts;
 	GQueue *queue;
+	GList *running_backups;
 	config_t config;
 	MYSQL *mysql;
 } AppData;
@@ -104,6 +105,8 @@ static void on_backup_finished(Backup *backup, time_t finished, AppData *app_dat
 		host_remove_incr_backups(backup_get_host(backup));
 	}
 
+	app_data->running_backups = g_list_remove(app_data->running_backups, backup);
+
 	// Clean up
 	g_free(s);
 	g_object_unref(backup);
@@ -127,14 +130,14 @@ static void on_backup_failure(Backup *backup, gint failures, AppData *app_data){
 /* Called when a backup starts a job
  */
 static void on_backup_job_started(Backup *backup, Job *job, AppData *app_data){
-	syslog(LOG_INFO, "Job has been started: %u (%s on Host \"%s\")\n", job_get_pid(job), job_get_srcdir(job), job_get_hostname(job));
+	syslog(LOG_INFO, "Job has been started: \"%s\" on Host \"%s\" (%u)\n", job_get_srcdir(job), job_get_hostname(job), job_get_pid(job));
 	job_set_mysql_id(job, db_job_add(job, app_data->mysql));
 }
 
 /* Called when a job finishes
  */
 static void on_backup_job_finished(Backup *backup, Job *job, AppData *app_data){
-	syslog(LOG_INFO, "Job has been finished: %u (%s on Host \"%s\"), Exit code was: %u\n", job_get_pid(job), job_get_srcdir(job), job_get_hostname(job), job_get_exit_code(job));
+	syslog(LOG_INFO, "Job has been finished: \"%s\" on Host \"%s\" (%u / %u)\n", job_get_srcdir(job), job_get_hostname(job), job_get_pid(job), job_get_exit_code(job));
 	db_job_update(job, app_data->mysql);
 }
 
@@ -235,6 +238,24 @@ static gboolean network_read(GIOChannel *channel, GIOCondition condition, gpoint
 	}
 	else if (g_strcmp0(token[0], "stop") == 0){
 		exit(0);
+	}
+	else if (g_strcmp0(token[0], "cancel") == 0){
+		Host *host;
+		GList *p;
+		host = host_find_by_name(token[1], app_data_aux_ptr);
+		if (host){
+			syslog(LOG_NOTICE, "Cancelling all backups for Host \"%s\"", host_get_name(host));
+			for (p = app_data_aux_ptr->running_backups; p != NULL; p = p->next){
+				Backup *backup;
+				Host *host2;
+				
+				backup = p->data;
+				host2 = backup_get_host(backup);
+				if (g_strcmp0(host_get_name(host), host_get_name(host2)) == 0){
+					backup_cancel(backup);
+				}
+			}
+		}
 	}
 	else {
 		syslog(LOG_WARNING, "Invalid message: %s\n", str);
@@ -387,6 +408,7 @@ static gboolean do_backup(AppData *app_data){
 
 	if ((backup = g_queue_pop_head(app_data->queue)) != NULL){
 		backup_run(backup);
+		app_data->running_backups = g_list_append(app_data->running_backups, backup);
 	}
 	return (TRUE);
 }
@@ -556,6 +578,7 @@ int main(int argc, char **argv){
 	app_data = g_slice_new0(AppData);
 	app_data->queue = g_queue_new();
 	app_data->hosts = NULL;
+	app_data->running_backups = NULL;
 	
 	// For global access to app_data
 	app_data_aux_ptr = app_data;
