@@ -39,6 +39,7 @@ struct _Host
 
 	GString *name;
 	GString *hostname;
+	GString *user;
 	GString *ip;
 	GString *rsync_opts;
 	GString *backupdir;

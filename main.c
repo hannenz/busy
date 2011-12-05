@@ -59,8 +59,11 @@ static void cleanup(){
 	g_list_free(app_data->hosts);
 	g_queue_free(app_data->queue);
 	g_slice_free(AppData, app_data);
+	
+	syslog(LOG_NOTICE, "Exiting now");
+	exit(0);
 
-//	g_mem_profile();
+	g_mem_profile();
 }
 
 /* *******************************************************
@@ -468,7 +471,7 @@ static void reload(gint nr){
 
 static sighandler_t handle_signal(gint sig_nr, sighandler_t signalhandler){
 	struct sigaction old_sig, handler_cleanup, handler_hup;
-
+	
 	handler_hup.sa_handler = reload;
 	sigemptyset(&handler_hup.sa_mask);
 	handler_hup.sa_flags = SA_RESTART;
@@ -547,7 +550,7 @@ int main(int argc, char **argv){
 	syslog(LOG_NOTICE, "-----------------------------------\n");
 	syslog(LOG_NOTICE, "Daemon has been started\n");
 
-	atexit(cleanup);
+//	atexit(cleanup);
 
 	// Initialize App Data structire
 	app_data = g_slice_new0(AppData);

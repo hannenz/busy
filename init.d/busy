@@ -29,7 +29,7 @@ case "$1" in
 	
 	stop)
 		echo -n "Stopping $NAME"
-		killall -9 busyd
+		killall busyd
 		rm -f /var/lock/busy/*
 		echo " ... [OK]"
 		;;

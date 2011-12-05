@@ -19,7 +19,8 @@ enum{
 	PROP_INCLUDES,
 	PROP_EXCLUDES,
 	PROP_IPS,
-	PROP_SCHEDULE
+	PROP_SCHEDULE,
+	PROP_USER
 };
 
 enum{
@@ -35,6 +36,7 @@ static void host_init (Host *object){
 	Host *host = BUS_HOST(object);
 	host->name = g_string_new(NULL);
 	host->hostname = g_string_new(NULL);
+	host->user = g_string_new(NULL);
 	host->rsync_opts = g_string_new(NULL);
 	host->ip = g_string_new(NULL);
 	host->backupdir = g_string_new(NULL);
@@ -50,6 +52,7 @@ static void host_finalize (GObject *object) {
 	syslog(LOG_NOTICE, "Finalizing host: %s\n", host->name->str);
 	g_string_free(host->name, TRUE);
 	g_string_free(host->hostname, TRUE);
+	g_string_free(host->user, TRUE);
 	g_string_free(host->rsync_opts, TRUE);
 	g_string_free(host->ip, TRUE);
 	g_string_free(host->backupdir, TRUE);
@@ -81,7 +84,7 @@ gchar *rtrim (gchar *s){
 
 Host *host_new_from_config_setting(config_t *config, config_setting_t *cs){
 	Host *host;
-	const gchar *name, *hostname, *rsync_opts, *backupdir;
+	const gchar *name, *hostname, *rsync_opts, *backupdir, *user;
 	long int mi;
 	gint max_incr;
 	gdouble max_age_incr, max_age_full;
@@ -101,6 +104,13 @@ Host *host_new_from_config_setting(config_t *config, config_setting_t *cs){
 	if (config_setting_lookup_string(cs, "hostname", &hostname) == CONFIG_FALSE){
 		hostname = NULL;
 	}
+	
+	if (config_setting_lookup_string(cs, "user", &user) == CONFIG_FALSE){
+		if (config_lookup_string(config, "default.user", &user) == CONFIG_FALSE){
+			user = g_strdup("root");
+		}
+	}
+	
 	if (config_setting_lookup_string(cs, "rsync_opts", &rsync_opts) == CONFIG_FALSE){
 		if ((config_lookup_string(config, "default.rsync_opts", &rsync_opts)) == CONFIG_FALSE){
 			rsync_opts = "";
@@ -225,7 +235,7 @@ Host *host_new_from_config_setting(config_t *config, config_setting_t *cs){
 
 
 static gint isofunc(ExistingBackup *a, ExistingBackup *b, gpointer udata){
-	return (b->age - a->age);
+	return (b->age < a->age);
 }
 
 GList *host_read_backups(Host *host, BusBackupType type){
@@ -273,6 +283,7 @@ GList *host_read_backups(Host *host, BusBackupType type){
 		g_dir_close(dir);
 	}
 	g_free(path);
+	
 	return (backups);
 }
 
@@ -400,6 +411,12 @@ void host_set_backupdir(Host *self, const gchar *backupdir){
 	g_object_notify(G_OBJECT(self), "backupdir");
 }
 
+void host_set_user(Host *self, const gchar *user){
+	g_return_if_fail(BUS_IS_HOST(self));
+	g_string_assign(self->user, user),
+	g_object_notify(G_OBJECT(self), "user");
+}
+
 void host_set_max_incr(Host *self, gint max_incr){
 	g_return_if_fail(BUS_IS_HOST(self));
 	self->max_incr = max_incr;
@@ -467,6 +484,11 @@ const gchar *host_get_rsync_opts(Host *self){
 const gchar *host_get_backupdir(Host *self){
 	g_return_val_if_fail(BUS_IS_HOST(self), NULL);
 	return (self->backupdir->str);
+}
+
+const gchar *host_get_user(Host *self){
+	g_return_val_if_fail(BUS_IS_HOST(self), NULL);
+	return (self->user->str);
 }
 
 const gchar *host_get_ip(Host *self){
@@ -677,6 +699,9 @@ static void host_set_property (GObject *object, guint prop_id, const GValue *val
 	case PROP_SCHEDULE:
 		host->schedule = g_value_get_pointer(value);
 		break;
+	case PROP_USER:
+		host_set_user(host, g_value_get_string(value));
+		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 		break;
@@ -728,6 +753,9 @@ static void host_get_property (GObject *object, guint prop_id, GValue *value, GP
 		break;
 	case PROP_SCHEDULE:
 		g_value_set_pointer(value, host->schedule);
+		break;
+	case PROP_USER:
+		g_value_set_string(value, host->user->str);
 		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -803,6 +831,10 @@ static void host_class_init (HostClass *klass){
 	g_object_class_install_property (object_class,
 	                                 PROP_SCHEDULE,
 	                                 g_param_spec_pointer("schedule", "schedule", "Schedule", G_PARAM_READWRITE)
+									);
+	g_object_class_install_property (object_class,
+	                                 PROP_USER,
+	                                 g_param_spec_string("user", "user", "User", "", G_PARAM_READWRITE)
 									);
 
 	host_signals[CREATED] = g_signal_new ("created", G_OBJECT_CLASS_TYPE (klass), G_SIGNAL_RUN_LAST, G_STRUCT_OFFSET (HostClass, created), NULL, NULL, g_cclosure_marshal_VOID__VOID, G_TYPE_NONE, 0);

@@ -1,4 +1,5 @@
 #include <sys/wait.h>
+#include <unistd.h>
 #include "job.h"
 #include "busy.h"
 
@@ -85,6 +86,7 @@ void job_run(Job *job){
 	gint argc = 0;
 	Backup *backup;
 	Host *host;
+	GError *error = NULL;
 
 	backup = job_get_backup(job);
 	host = backup_get_host(backup);
@@ -98,7 +100,8 @@ void job_run(Job *job){
 		ExistingBackup *youngest;
 		gchar *l;
 		youngest = host_get_youngest_backup(host, BUS_BACKUP_TYPE_FULL);
-		l = g_build_filename(backup_get_full_path(backup), youngest->name->str, job_get_destdir(job), NULL);
+//		l = g_build_filename(backup_get_full_path(backup), youngest->name->str, job_get_destdir(job), NULL);
+		l = g_build_filename(backup_get_path(backup), youngest->name->str, job_get_destdir(job), NULL);
 		linkdest = g_strdup_printf("--link-dest=%s", l);
 		argv[argc++] = linkdest;
 		g_slice_free(ExistingBackup, youngest);
@@ -106,30 +109,45 @@ void job_run(Job *job){
 	}
 
 	if (g_list_length(job->backup->host->excludes) > 0){
+
+		// Write excludes to tmp file
+		// Specifying the excludes as "--exclude" parameters didn't work as expected for some reason
+		// and having them read from file seems to be a bit cleaner anyway... ;)
 	
 		for (lptr = job->backup->host->excludes; lptr != NULL; lptr = lptr->next){
 			excludes = (excludes == NULL) ? g_strdup((gchar*)lptr->data) : g_strjoin("\n", excludes, (gchar*)lptr->data, NULL);
 		}
-		g_file_set_contents("/tmp/excludefile", excludes, -1, NULL);
-		argv[argc++] = g_strdup("--exclude-from=/tmp/excludefile");
+		excludes = g_strjoin("\n", excludes, NULL);
 	
-/*		for (lptr = job->backup->host->excludes; lptr != NULL; lptr = lptr->next){*/
+		gchar *tmp_filename = NULL;
+		error = NULL;
+		gint fd;
+		// Open tmp file; 
+		fd = g_file_open_tmp(NULL, &tmp_filename, &error);
+		if (error != NULL){
+			syslog(LOG_ERR, "Failed to open tmp file: %s", error->message);
+			g_error_free(error);
+			return;
+		}
+		if (fd == -1){
+			syslog(LOG_ERR, "Failed to open tmp file");
+			return;
+		}
+		close(fd);
+		g_file_set_contents(tmp_filename, excludes, -1, NULL);
+		argv[argc++] = g_strdup_printf("--exclude-from=%s", tmp_filename);
+		g_free(tmp_filename);
+	}
+
+/*	if (g_list_length(job->backup->host->includes) > 0){*/
+/*		for (lptr = job->backup->host->includes; lptr != NULL; lptr = lptr->next){*/
 /*			gchar *s;*/
-/*			s = g_strdup_printf("--exclude=\"%s\"", (gchar *)lptr->data);*/
-/*			excludes = (excludes == NULL) ? g_strdup(s) : g_strjoin(" ", excludes, s, NULL);*/
+/*			s = g_strdup_printf("--include=\"%s\"", (gchar *)lptr->data);*/
+/*			includes = (includes == NULL) ? g_strdup(s) : g_strjoin(includes, s, NULL);*/
 /*			g_free(s);*/
 /*		}*/
-/*		argv[argc++] = excludes;*/
-	}
-	if (g_list_length(job->backup->host->includes) > 0){
-		for (lptr = job->backup->host->includes; lptr != NULL; lptr = lptr->next){
-			gchar *s;
-			s = g_strdup_printf("--include=\"%s\"", (gchar *)lptr->data);
-			includes = (includes == NULL) ? g_strdup(s) : g_strjoin(includes, s, NULL);
-			g_free(s);
-		}
-		argv[argc++] = includes;
-	}
+/*		argv[argc++] = includes;*/
+/*	}*/
 
 	gchar *dest;
 	const gchar *ip;
@@ -159,7 +177,7 @@ void job_run(Job *job){
 
 	g_object_set(G_OBJECT(job), "rsync_cmd", g_strjoinv(" ", argv), NULL);
 
-	GError *error = NULL;
+	error = NULL;
 	GPid pid;
 	gint stdin, stdout, stderr;
 	if (!g_spawn_async_with_pipes(NULL, argv, NULL, G_SPAWN_DO_NOT_REAP_CHILD, NULL, NULL, &pid, &stdin, &stdout, &stderr, &error)){
