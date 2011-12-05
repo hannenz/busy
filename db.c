@@ -212,9 +212,10 @@ gint db_hosts_store(GList *hosts, MYSQL *mysql){
 		switch (n){
 			case 1:
 				row = mysql_fetch_row(result);
-				query = g_strdup_printf("UPDATE `hosts` SET `name`='%s', `hostname`='%s', `max_incr`='%u', `max_age_full`='%f', `max_age_incr`='%f', `backupdir`='%s', `schedule`='%s', `excludes`='%s', `ips`='%s', `srcdirs`='%s' WHERE id='%u'",
+				query = g_strdup_printf("UPDATE `hosts` SET `name`='%s', `hostname`='%s', `user`='%s', `max_incr`='%u', `max_age_full`='%f', `max_age_incr`='%f', `backupdir`='%s', `schedule`='%s', `excludes`='%s', `ips`='%s', `srcdirs`='%s' WHERE id='%u'",
 					host_get_name(host),
 					host_get_hostname(host),
+					host_get_user(host),
 					host_get_max_incr(host),
 					host_get_max_age_full(host),
 					host_get_max_age_incr(host),
@@ -228,9 +229,10 @@ gint db_hosts_store(GList *hosts, MYSQL *mysql){
 				break;
 				
 			case 0:
-				query = g_strdup_printf("INSERT INTO `hosts` (`name`, `hostname`, `max_incr`, `max_age_full`, `max_age_incr`, `backupdir`, `schedule`, `excludes`, `ips`, `srcdirs`) VALUES ('%s', '%s', '%d', '%.5f', '%.5f', '%s', '%s', '%s', '%s', '%s')",
+				query = g_strdup_printf("INSERT INTO `hosts` (`name`, `hostname`, `user`, `max_incr`, `max_age_full`, `max_age_incr`, `backupdir`, `schedule`, `excludes`, `ips`, `srcdirs`) VALUES ('%s', '%s', '%s', '%d', '%.5f', '%.5f', '%s', '%s', '%s', '%s', '%s')",
 					host_get_name(host),
 					host_get_hostname(host),
+					host_get_user(host),
 					host_get_max_incr(host),
 					host_get_max_age_full(host),
 					host_get_max_age_incr(host),

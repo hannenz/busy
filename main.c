@@ -349,12 +349,12 @@ static void check_backup(Host *host, AppData *app_data){
 		host_free_existing_backup(youngest_full);
 
 		// Queue the needed backup
-		syslog(LOG_INFO, "%s needs a %s backup\n", host_get_hostname(host), type == BUS_BACKUP_TYPE_FULL ? "full" : "incremental");
+		syslog(LOG_INFO, "Host \"%s\" needs a %s backup\n", host_get_name(host), type == BUS_BACKUP_TYPE_FULL ? "full" : "incremental");
 		queue_backup(host, type, app_data);
 	}
 	else {
 		// No need for a backup
-		syslog(LOG_INFO, "%s doesn't need a backup right now\n", host_get_hostname(host));
+		syslog(LOG_INFO, "Host \"%s\" doesn't need a backup right now\n", host_get_name(host));
 	}
 	host_free_existing_backup(youngest);
 }
