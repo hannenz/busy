@@ -416,8 +416,6 @@ static void ping_host(Host *host, AppData *app_data){
 static gboolean do_archive(AppData *app_data){
 	GList *p, *p2;
 
-	return (TRUE);
-
 	syslog(LOG_NOTICE, "CHECKING FOR ARCHIVE");
 
 	for (p = app_data->hosts; p != NULL; p = p->next){
@@ -636,16 +634,14 @@ int main(int argc, char **argv){
 	g_signal_connect(service, "incoming", (GCallback)on_incoming, app_data);
 
 
-	// Call main function once
+	// Call wakeup and archive function once
 	wakeup(app_data);
+	do_archive(app_data);
 
-	// Check preiodically for backups
-	g_timeout_add_seconds(WAKEUP_INTERVAL, (GSourceFunc)wakeup, app_data);
-
-	// Process queue periodically
-//	g_idle_add((GSourceFunc)do_backup, app_data);
-	g_timeout_add_seconds(1, (GSourceFunc)do_backup, app_data);
-	g_timeout_add_seconds(4, (GSourceFunc)do_archive, app_data);
+	// Check preiodically for backups, queue and archives,
+	//~ g_timeout_add_seconds(WAKEUP_INTERVAL, (GSourceFunc)wakeup, app_data);
+	//~ g_timeout_add_seconds(1, (GSourceFunc)do_backup, app_data);
+	//~ g_timeout_add_seconds(2, (GSourceFunc)do_archive, app_data);
 
 	// Run main loop
 	main_loop = g_main_loop_new(NULL, FALSE);

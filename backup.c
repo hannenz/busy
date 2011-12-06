@@ -1,4 +1,5 @@
 #include <string.h>
+#include <sys/wait.h>
 #include <unistd.h>
 #include <glib/gstdio.h>
 
@@ -436,9 +437,70 @@ BusBackupType backup_check(Backup *backup){
 
 }
 
+void watch_archive(GPid pid, gint status, gchar *archive){
+	if (WIFEXITED(status)){
+		if (WEXITSTATUS(status) == 0){
+			syslog(LOG_NOTICE, "Backup has been archived successfully at \"%s\"", archive);
+		}
+		else {
+			syslog(LOG_ERR, "Archiving backup \"%s\" failed. Tar exited with %u", archive, WEXITSTATUS(status));
+		}
+	}
+	else {
+		syslog(LOG_ERR, "Archiving backup \"%s\" failed. Tar exited unnormally", archive);
+	}
+	g_free(archive);
+}
+
+//~ static gboolean on_gio_out(GIOChannel *source, GIOCondition condition, gpointer udata){
+	//~ gchar *line;
+	//~ gsize len;
+	//~ g_io_channel_read_line(source, &line, &len, NULL, NULL);
+	//~ syslog(LOG_NOTICE, ">>>>>>>>>>>>>> %s", line);
+	//~ return (TRUE);
+//~ }
+
 void backup_archive(ExistingBackup *eback, Host *host){
-	if (host_get_archivedir(host) != NULL){
-		syslog(LOG_NOTICE, "Archiving backup: %s Host: %s", eback->name->str, host_get_name(host));
+	const gchar *archivedir;
+	gchar *argv[1024], *archive, *backup;
+	gint argc, stdin, stdout, stderr;
+	GPid pid;
+	GError *error;
+
+
+	archivedir = host_get_archivedir(host);
+	if (archivedir != NULL && g_file_test(archivedir, G_FILE_TEST_IS_DIR)){
+		archive = g_strdup_printf("%s/%s-%s.tar.gz", archivedir, host_get_name(host), eback->name->str);
+		backup = g_strdup_printf("%s/%s/%s", host_get_backupdir(host), host_get_name(host), eback->name->str);
+
+		if (!g_file_test(archive, G_FILE_TEST_EXISTS)){
+
+			argc = 0;
+			argv[argc++] = "/bin/tar";
+			argv[argc++] = "czf";
+			argv[argc++] = archive;
+			argv[argc++] = backup;
+			argv[argc++] = NULL;
+
+
+			if (!g_spawn_async_with_pipes(NULL, argv, NULL, G_SPAWN_DO_NOT_REAP_CHILD, NULL, NULL, &pid, &stdin, &stdout, &stderr, &error)){
+				syslog(LOG_WARNING, "Spawning process failed: %s\n", error->message);
+			}
+			syslog(LOG_NOTICE, "Archiving Backup: \"%s\" (tar pid=%u)", backup, pid);
+			g_child_watch_add(pid, (GChildWatchFunc)watch_archive, g_strdup(archive));
+			//~ GIOChannel *out, *err;
+			//~ out = g_io_channel_unix_new(stdout);
+			//~ err = g_io_channel_unix_new(stderr);
+			//~ g_io_add_watch(out, G_IO_IN, on_gio_out, NULL);
+			//~ g_io_add_watch(err, G_IO_IN, on_gio_out, NULL);
+		}
+
+		g_free(archive);
+		g_free(backup);
+
+	}
+	else {
+		syslog(LOG_ERR, "Cannot archive backup since %s is not a directory", archivedir);
 	}
 }
 
