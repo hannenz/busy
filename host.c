@@ -2,6 +2,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <glib/gstdio.h>
+
 #include "host.h"
 #include "busy.h"
 
@@ -20,7 +21,10 @@ enum{
 	PROP_EXCLUDES,
 	PROP_IPS,
 	PROP_SCHEDULE,
-	PROP_USER
+	PROP_USER,
+	PROP_MYSQL_ID,
+	PROP_MAX_AGE,
+	PROP_ARCHIVEDIR
 };
 
 enum{
@@ -40,6 +44,7 @@ static void host_init (Host *object){
 	host->rsync_opts = g_string_new(NULL);
 	host->ip = g_string_new(NULL);
 	host->backupdir = g_string_new(NULL);
+	host->archivedir = g_string_new(NULL);
 	host->srcdirs = NULL;
 	host->excludes = NULL;
 	host->includes = NULL;
@@ -56,6 +61,7 @@ static void host_finalize (GObject *object) {
 	g_string_free(host->rsync_opts, TRUE);
 	g_string_free(host->ip, TRUE);
 	g_string_free(host->backupdir, TRUE);
+	g_string_free(host->archivedir, TRUE);
 	g_list_free(host->srcdirs);
 	g_list_free(host->excludes);
 	g_list_free(host->includes);
@@ -84,10 +90,10 @@ gchar *rtrim (gchar *s){
 
 Host *host_new_from_config_setting(config_t *config, config_setting_t *cs){
 	Host *host;
-	const gchar *name, *hostname, *rsync_opts, *backupdir, *user;
+	const gchar *name, *hostname, *rsync_opts, *backupdir, *user, *archivedir;
 	long int mi;
 	gint max_incr;
-	gdouble max_age_incr, max_age_full;
+	gdouble max_age_incr, max_age_full, max_age;
 
 	if ((host = host_new()) == NULL){
 		return (NULL);
@@ -105,13 +111,18 @@ Host *host_new_from_config_setting(config_t *config, config_setting_t *cs){
 			backupdir = NULL;
 		}
 	}
-	
+	if (config_setting_lookup_string(cs, "archivedir", &archivedir) == CONFIG_FALSE){
+		if ((config_lookup_string(config, "default.archivedir", &archivedir)) == CONFIG_FALSE){
+			archivedir = NULL;
+		}
+	}
+
 	if (config_setting_lookup_string(cs, "user", &user) == CONFIG_FALSE){
 		if ((config_lookup_string(config, "default.user", &user) == CONFIG_FALSE)){
 			user = NULL;
 		}
 	}
-	
+
 	if (config_setting_lookup_string(cs, "rsync_opts", &rsync_opts) == CONFIG_FALSE){
 		if ((config_lookup_string(config, "default.rsync_opts", &rsync_opts)) == CONFIG_FALSE){
 			rsync_opts = "";
@@ -134,6 +145,11 @@ Host *host_new_from_config_setting(config_t *config, config_setting_t *cs){
 			max_age_full = 7.0;
 		}
 	}
+	if (config_setting_lookup_float(cs, "max_age", &max_age) == CONFIG_FALSE){
+		if (config_lookup_float(config, "default.max_age", &max_age) == CONFIG_FALSE){
+			max_age = 365;
+		}
+	}
 
 	if (name == NULL || hostname == NULL || backupdir == NULL){
 		g_object_unref(host);
@@ -153,6 +169,8 @@ Host *host_new_from_config_setting(config_t *config, config_setting_t *cs){
 		"max_incr", max_incr,
 		"max_age_incr", max_age_incr,
 		"max_age_full", max_age_full,
+		"max_age", max_age,
+		"archivedir", archivedir,
 		NULL
 	);
 
@@ -285,7 +303,7 @@ GList *host_read_backups(Host *host, BusBackupType type){
 		g_dir_close(dir);
 	}
 	g_free(path);
-	
+
 	return (backups);
 }
 
@@ -413,6 +431,12 @@ void host_set_backupdir(Host *self, const gchar *backupdir){
 	g_object_notify(G_OBJECT(self), "backupdir");
 }
 
+void host_set_archivedir(Host *self, const gchar *archivedir){
+	g_return_if_fail(BUS_IS_HOST(self));
+	g_string_assign(self->archivedir, archivedir);
+	g_object_notify(G_OBJECT(self), "archivedir");
+}
+
 void host_set_user(Host *self, const gchar *user){
 	g_return_if_fail(BUS_IS_HOST(self));
 	g_string_assign(self->user, user),
@@ -436,6 +460,12 @@ void host_set_max_age_full(Host *self, gdouble max_age_full){
 	g_return_if_fail(BUS_IS_HOST(self));
 	self->max_age_full = max_age_full;
 	g_object_notify(G_OBJECT(self), "max_age_full");
+}
+
+void host_set_max_age(Host *self, gdouble max_age){
+	g_return_if_fail(BUS_IS_HOST(self));
+	self->max_age_full = max_age;
+	g_object_notify(G_OBJECT(self), "max_age");
 }
 
 void host_add_exclude(Host *self, const gchar *exclude){
@@ -488,6 +518,11 @@ const gchar *host_get_backupdir(Host *self){
 	return (self->backupdir->str);
 }
 
+const gchar *host_get_archivedir(Host *self){
+	g_return_val_if_fail(BUS_IS_HOST(self), NULL);
+	return (self->archivedir->str);
+}
+
 const gchar *host_get_user(Host *self){
 	g_return_val_if_fail(BUS_IS_HOST(self), NULL);
 	return (self->user->str);
@@ -513,6 +548,21 @@ gdouble host_get_max_age_full(Host *self){
 	return (self->max_age_full);
 }
 
+gdouble host_get_max_age(Host *self){
+	g_return_val_if_fail(BUS_IS_HOST(self), -1.0);
+	return (self->max_age);
+}
+
+gint host_get_mysql_id(Host *self){
+	g_return_val_if_fail(BUS_IS_HOST(self), -1);
+	return (self->mysql_id);
+}
+
+void host_set_mysql_id(Host *self, gint mysql_id){
+	g_return_if_fail(BUS_IS_HOST(self));
+	self->mysql_id = mysql_id;
+	g_object_notify(G_OBJECT(self), "mysql_id");
+}
 
 gboolean host_ping(Host *host, gchar *ip){
 	g_return_val_if_fail(BUS_IS_HOST(host), FALSE);
@@ -677,6 +727,9 @@ static void host_set_property (GObject *object, guint prop_id, const GValue *val
 	case PROP_BACKUPDIR:
 		host_set_backupdir(host, g_value_get_string(value));
 		break;
+	case PROP_ARCHIVEDIR:
+		host_set_archivedir(host, g_value_get_string(value));
+		break;
 	case PROP_MAX_INCR:
 		host_set_max_incr(host, g_value_get_int(value));
 		break;
@@ -685,6 +738,9 @@ static void host_set_property (GObject *object, guint prop_id, const GValue *val
 		break;
 	case PROP_MAX_AGE_FULL:
 		host_set_max_age_full(host, g_value_get_double(value));
+		break;
+	case PROP_MAX_AGE:
+		host_set_max_age(host, g_value_get_double(value));
 		break;
 	case PROP_EXCLUDES:
 		host->excludes = g_value_get_pointer(value);
@@ -703,6 +759,9 @@ static void host_set_property (GObject *object, guint prop_id, const GValue *val
 		break;
 	case PROP_USER:
 		host_set_user(host, g_value_get_string(value));
+		break;
+	case PROP_MYSQL_ID:
+		host_set_mysql_id(host, g_value_get_int(value));
 		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -732,6 +791,9 @@ static void host_get_property (GObject *object, guint prop_id, GValue *value, GP
 	case PROP_BACKUPDIR:
 		g_value_set_string(value, host->backupdir->str);
 		break;
+	case PROP_ARCHIVEDIR:
+		g_value_set_string(value, host->archivedir->str);
+		break;
 	case PROP_MAX_INCR:
 		g_value_set_int(value, host->max_incr);
 		break;
@@ -740,6 +802,9 @@ static void host_get_property (GObject *object, guint prop_id, GValue *value, GP
 		break;
 	case PROP_MAX_AGE_FULL:
 		g_value_set_double(value, host->max_age_full);
+		break;
+	case PROP_MAX_AGE:
+		g_value_set_double(value, host->max_age);
 		break;
 	case PROP_EXCLUDES:
 		g_value_set_pointer(value, host->excludes);
@@ -758,6 +823,9 @@ static void host_get_property (GObject *object, guint prop_id, GValue *value, GP
 		break;
 	case PROP_USER:
 		g_value_set_string(value, host->user->str);
+		break;
+	case PROP_MYSQL_ID:
+		g_value_set_int(value, host->mysql_id);
 		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -803,6 +871,10 @@ static void host_class_init (HostClass *klass){
 	                                 g_param_spec_string("backupdir", "BackupDir", "Backup Destination", "", G_PARAM_READWRITE)
 									);
 	g_object_class_install_property (object_class,
+	                                 PROP_ARCHIVEDIR,
+	                                 g_param_spec_string("archivedir", "ArchiveDir", "Archive Destination", "", G_PARAM_READWRITE)
+									);
+	g_object_class_install_property (object_class,
 	                                 PROP_MAX_INCR,
 	                                 g_param_spec_int("max_incr", "max-incr", "Max nr. of incremental backups", 0, 100, 7, G_PARAM_READWRITE)
 									);
@@ -813,6 +885,10 @@ static void host_class_init (HostClass *klass){
 	g_object_class_install_property (object_class,
 	                                 PROP_MAX_AGE_FULL,
 	                                 g_param_spec_double("max_age_full", "max-age-full", "Max Age of incremental backups in days", 0.0, 3560.0, 7.0, G_PARAM_READWRITE)
+									);
+	g_object_class_install_property (object_class,
+	                                 PROP_MAX_AGE,
+	                                 g_param_spec_double("max_age", "max-age", "Max Age of full backup before it gets archived", 0.0, 3560.0, 265, G_PARAM_READWRITE)
 									);
 	g_object_class_install_property (object_class,
 	                                 PROP_EXCLUDES,
@@ -837,6 +913,10 @@ static void host_class_init (HostClass *klass){
 	g_object_class_install_property (object_class,
 	                                 PROP_USER,
 	                                 g_param_spec_string("user", "user", "User", "root", G_PARAM_READWRITE)
+									);
+	g_object_class_install_property (object_class,
+	                                 PROP_MYSQL_ID,
+	                                 g_param_spec_int("mysql_id", "mysql-id", "MySQL Id", 0, G_MAXINT, 0, G_PARAM_READWRITE)
 									);
 
 	host_signals[CREATED] = g_signal_new ("created", G_OBJECT_CLASS_TYPE (klass), G_SIGNAL_RUN_LAST, G_STRUCT_OFFSET (HostClass, created), NULL, NULL, g_cclosure_marshal_VOID__VOID, G_TYPE_NONE, 0);

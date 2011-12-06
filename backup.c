@@ -1,8 +1,10 @@
 #include <string.h>
 #include <unistd.h>
 #include <glib/gstdio.h>
+
 #include "backup.h"
 #include "busy.h"
+#include "db.h"
 
 enum{
 	PROP_0,
@@ -202,18 +204,24 @@ static void on_job_finished(Job *job, gint status, gpointer udata){
 	}
 }
 
+static void on_job_state_changed(Job *job, gint status, gpointer udata){
+	AppData *app_data = udata;
+	db_job_update(job, app_data->mysql);
+}
+
 void backup_cancel(Backup *backup){
 	g_return_if_fail(BUS_IS_BACKUP(backup));
-	
+
 	GList *jobs, *p;
-	
+
 	jobs = backup_get_jobs(backup);
 	for (p = jobs; p != NULL; p = p->next){
 		job_cancel(p->data);
 	}
+	backup_set_state(backup, BUS_BACKUP_STATE_CANCELLED);
 }
 
-void backup_run(Backup *backup){
+void backup_run(Backup *backup, AppData *app_data){
 	g_return_if_fail(BUS_IS_BACKUP(backup));
 
 	GList *lptr;
@@ -227,8 +235,11 @@ void backup_run(Backup *backup){
 		if ((job = job_new(backup, srcdir))){
 			g_signal_connect(G_OBJECT(job), "started", (GCallback)on_job_started, NULL);
 			g_signal_connect(G_OBJECT(job), "finished", (GCallback)on_job_finished, backup);
+			g_signal_connect(G_OBJECT(job), "state-changed", (GCallback)on_job_state_changed, app_data);
+
 			backup_add_job(backup, job);
 			job_run(job);
+
 			backup_log(backup, "Running Job for srcdir \"%s\"", srcdir);
 			backup_log(backup, "Rsync Cmd: %s", job_get_rsync_cmd(job));
 		}
@@ -342,7 +353,8 @@ const gchar *backup_get_state_str(Backup *backup){
 		"in progress",
 		"success",
 		"failed",
-		"failed partially"
+		"failed partially",
+		"cancelled"
 	};
 	return (strings[backup->state]);
 }
@@ -422,6 +434,12 @@ BusBackupType backup_check(Backup *backup){
 
 	return (type);
 
+}
+
+void backup_archive(ExistingBackup *eback, Host *host){
+	if (host_get_archivedir(host) != NULL){
+		syslog(LOG_NOTICE, "Archiving backup: %s Host: %s", eback->name->str, host_get_name(host));
+	}
 }
 
 static void backup_set_property (GObject *object, guint prop_id, const GValue *value, GParamSpec *pspec){

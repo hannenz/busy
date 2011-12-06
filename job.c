@@ -3,6 +3,7 @@
 #include "job.h"
 #include "busy.h"
 
+
 enum{
 	PROP_0,
 	PROP_JOB_SRCDIR,
@@ -85,7 +86,7 @@ void watch_job(GPid pid, gint status, Job *job){
 	if (WIFSIGNALED(status)){
 		syslog(LOG_NOTICE, "Job has been terminated by signal %u", WTERMSIG(status));
 	}
-	
+
 //	g_object_unref(job);
 }
 
@@ -126,16 +127,16 @@ void job_run(Job *job){
 		// Write excludes to tmp file
 		// Specifying the excludes as "--exclude" parameters didn't work as expected for some reason
 		// and having them read from file seems to be a bit cleaner anyway... ;)
-	
+
 		for (lptr = job->backup->host->excludes; lptr != NULL; lptr = lptr->next){
 			excludes = (excludes == NULL) ? g_strdup((gchar*)lptr->data) : g_strjoin("\n", excludes, (gchar*)lptr->data, NULL);
 		}
 		excludes = g_strjoin("\n", excludes, NULL);
-	
+
 		gchar *tmp_filename = NULL;
 		error = NULL;
 		gint fd;
-		// Open tmp file; 
+		// Open tmp file;
 		fd = g_file_open_tmp(NULL, &tmp_filename, &error);
 		if (error != NULL){
 			syslog(LOG_ERR, "Failed to open tmp file: %s", error->message);
@@ -222,11 +223,11 @@ void job_dump(Job *job){
 
 void job_cancel(Job *job){
 	g_return_if_fail(BUS_IS_JOB(job));
-	
+
 	syslog(LOG_NOTICE, "Cancelling job \"%s\" on Host \"%s\"", job_get_srcdir(job), job_get_hostname(job));
-	
+
 	if (job_get_state(job) == BUS_JOB_RUNNING){
-		
+
 		GPid pid;
 		pid = job_get_pid(job);
 		if (pid > 0){

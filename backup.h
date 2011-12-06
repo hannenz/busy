@@ -31,9 +31,11 @@ typedef enum {
 	BUS_BACKUP_STATE_IN_PROGRESS,
 	BUS_BACKUP_STATE_SUCCESS,
 	BUS_BACKUP_STATE_FAILED,
-	BUS_BACKUP_STATE_FAILED_PARTIALLY
+	BUS_BACKUP_STATE_FAILED_PARTIALLY,
+	BUS_BACKUP_STATE_CANCELLED
 } BusBackupState;
 
+#include "busy.h"
 #include "host.h"
 #include "job.h"
 
@@ -103,9 +105,11 @@ void backup_set_finished(Backup *backup, time_t t);
 void backup_set_mysql_id(Backup *backup, gint id);
 
 void backup_add_job(Backup *backup, Job *job);
-void backup_run(Backup *backup);
+void backup_run(Backup *backup, AppData *app_data);
 
 GList *backup_get_jobs(Backup *backup);
+
+void backup_archive(ExistingBackup *eback, Host *host);
 
 G_END_DECLS
 
