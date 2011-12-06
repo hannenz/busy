@@ -428,28 +428,24 @@ GList *backup_get_running_jobs(Backup *backup){
 	return (backup->jobs);
 }
 
-BusBackupType backup_check(Backup *backup){
-	BusBackupType type = BUS_BACKUP_TYPE_NONE;
-
-	g_return_val_if_fail(BUS_IS_BACKUP(backup), BUS_BACKUP_TYPE_NONE);
-
-	return (type);
-
-}
-
-void watch_archive(GPid pid, gint status, gchar *archive){
+void watch_archive(GPid pid, gint status, gchar *backup){
 	if (WIFEXITED(status)){
 		if (WEXITSTATUS(status) == 0){
-			syslog(LOG_NOTICE, "Backup has been archived successfully at \"%s\"", archive);
+			syslog(LOG_NOTICE, "Backup \"%s\" has been archived successfully", backup);
+
+			// Remove backup
+			GError *error;
+			gchar *argv[] = { "/bin/rm", "-rf", backup, NULL };
+			g_spawn_async(NULL, argv, NULL, G_SPAWN_DO_NOT_REAP_CHILD, NULL, NULL, &pid, &error);
 		}
 		else {
-			syslog(LOG_ERR, "Archiving backup \"%s\" failed. Tar exited with %u", archive, WEXITSTATUS(status));
+			syslog(LOG_ERR, "Archiving backup \"%s\" failed. Tar exited with %u", backup, WEXITSTATUS(status));
 		}
 	}
 	else {
-		syslog(LOG_ERR, "Archiving backup \"%s\" failed. Tar exited unnormally", archive);
+		syslog(LOG_ERR, "Archiving backup \"%s\" failed. Tar exited unnormally", backup);
 	}
-	g_free(archive);
+	g_free(backup);
 }
 
 //~ static gboolean on_gio_out(GIOChannel *source, GIOCondition condition, gpointer udata){
@@ -487,7 +483,7 @@ void backup_archive(ExistingBackup *eback, Host *host){
 				syslog(LOG_WARNING, "Spawning process failed: %s\n", error->message);
 			}
 			syslog(LOG_NOTICE, "Archiving Backup: \"%s\" (tar pid=%u)", backup, pid);
-			g_child_watch_add(pid, (GChildWatchFunc)watch_archive, g_strdup(archive));
+			g_child_watch_add(pid, (GChildWatchFunc)watch_archive, g_strdup(backup));
 			//~ GIOChannel *out, *err;
 			//~ out = g_io_channel_unix_new(stdout);
 			//~ err = g_io_channel_unix_new(stderr);

@@ -257,8 +257,6 @@ void db_hosts_store(GList *hosts, MYSQL *mysql){
 	Host *host;
 	gint id;
 
-	syslog(LOG_NOTICE, "db_hosts_store()");
-
 	for (ptr = hosts; ptr != NULL; ptr = ptr->next){
 		host = ptr->data;
 		if ((id = db_host_add(host, mysql)) > 0){
