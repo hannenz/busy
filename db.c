@@ -11,19 +11,21 @@ gchar *time_t_to_datetime_str(time_t time){
 
 MYSQL *db_connect(const gchar *login, const gchar *password){
 	MYSQL *mysql;
+
 	mysql = mysql_init(NULL);
 	if (mysql){
-		mysql = mysql_real_connect(mysql, "localhost", login, password, "busy", 0, NULL, CLIENT_IGNORE_SIGPIPE);
-		if (mysql){
+		if (mysql_real_connect(mysql, "localhost", login, password, "busy", 0, NULL, CLIENT_IGNORE_SIGPIPE) != NULL){
+			syslog(LOG_NOTICE, "Connected to MySQL Database.\n");
 			my_bool reconnect = 1;
 			mysql_options(mysql, MYSQL_OPT_RECONNECT, &reconnect);
-			syslog(LOG_NOTICE, "Connected to MySQL Database.\n");
 			return (mysql);
 		}
+		else {
+			syslog(LOG_NOTICE, "Connection to MySQL Database failed: %s", mysql_error(mysql));
+			return (NULL);
+		}
 	}
-
-	mysql = NULL;
-	syslog(LOG_ERR, "Connection to MySQL Database failed.\n");
+	syslog(LOG_NOTICE, "Initializing MySQL failed");
 	return (NULL);
 }
 
@@ -32,6 +34,123 @@ void db_close(MYSQL *mysql){
 		mysql_close(mysql);
 	}
 }
+
+GList *db_read_hosts(MYSQL *mysql){
+	gchar *query;
+	gint ret, num_fields, i;
+	MYSQL_RES *result;
+	MYSQL_ROW row;
+	GList *hosts = NULL;
+	Host *host;
+	gchar **tokens, **tok;
+	MYSQL_FIELD *fields;
+
+	g_return_val_if_fail(mysql, NULL);
+
+
+	query = g_strdup_printf("SELECT *FROM `hosts`");
+	ret = mysql_real_query(mysql, query, strlen(query));
+	if (ret != 0){
+		syslog(LOG_ERR, "MySQL Query failed: %s %s", query, mysql_error(mysql));
+		return (NULL);
+	}
+
+	result = mysql_store_result(mysql);
+	num_fields = mysql_num_fields(result);
+	fields = mysql_fetch_fields(result);
+
+	while ((row = mysql_fetch_row(result))){
+		host = host_new();
+		for (i = 0; i < num_fields; i++){
+			if (g_strcmp0(fields[i].name, "name") == 0){
+				if (row[i] == 0 || strlen(row[i]) == 0){
+					syslog(LOG_ERR, "Invalid name");
+					g_object_unref(host);
+					continue;
+				}
+				host_set_name(host, row[i]);
+			}
+			if (g_strcmp0(fields[i].name, "hostname") == 0){
+				if (row[i] == NULL || strlen(row[i]) == 0){
+					syslog(LOG_ERR, "Invalid hostname");
+					g_object_unref(host);
+					continue;
+				}
+				host_set_hostname(host, row[i]);
+			}
+			if (g_strcmp0(fields[i].name, "user") == 0){
+				host_set_user(host, row[i] ? row[i] : DEFAULT_USER);
+			}
+			if (g_strcmp0(fields[i].name, "max_incr") == 0){
+				host_set_max_incr(host, row[i] ? atoi(row[i]) : DEFAULT_MAX_INCR);
+			}
+			if (g_strcmp0(fields[i].name, "max_age") == 0){
+				host_set_max_age(host, row[i] ? atof(row[i]) : DEFAULT_MAX_AGE);
+			}
+			if (g_strcmp0(fields[i].name, "max_age_incr") == 0){
+				host_set_max_age_incr(host, row[i] ? atof(row[i]) : DEFAULT_MAX_AGE_INCR);
+			}
+			if (g_strcmp0(fields[i].name, "max_age_full") == 0){
+				host_set_max_age_full(host, row[i] ? atof(row[i]) : DEFAULT_MAX_AGE_FULL);
+			}
+			if (g_strcmp0(fields[i].name, "rsync_opts") == 0){
+				host_set_rsync_opts(host, row[i] ? row[i] : DEFAULT_RSYNC_OPTS);
+			}
+			if (g_strcmp0(fields[i].name, "archivedir") == 0){
+				host_set_archivedir(host, row[i] ? row[i] : "");
+			}
+			if (g_strcmp0(fields[i].name, "backupdir") == 0){
+				host_set_backupdir(host, row[i] ? row[i] : DEFAULT_BACKUPDIR);
+			}
+			if (g_strcmp0(fields[i].name, "schedule") == 0){
+				tokens = g_strsplit(row[i], "\n", 0);
+				for (tok = tokens; *tok != NULL; tok++){
+					gchar *str = g_strstrip(*tok);
+					if (str != NULL && strlen(str) > 0){
+						host_add_schedule(host, str);
+					}
+				}
+				g_strfreev(tokens);
+			}
+			if (g_strcmp0(fields[i].name, "excludes") == 0){
+				tokens = g_strsplit(row[i], "\n", 0);
+				for (tok = tokens; *tok != NULL; tok++){
+					gchar *str = g_strstrip(*tok);
+					if (str != NULL && strlen(str) > 0){
+						host_add_exclude(host, str);
+					}
+				}
+				g_strfreev(tokens);
+			}
+			if (g_strcmp0(fields[i].name, "ips") == 0){
+				tokens = g_strsplit(row[i], "\n", 0);
+				for (tok = tokens; *tok != NULL; tok++){
+					gchar *str;
+					str = g_strstrip(*tok);
+					if (str != NULL && strlen(str) > 0 && is_valid_ip(str)){
+						host_add_ip(host,  str);
+					}
+				}
+				g_strfreev(tokens);
+			}
+			if (g_strcmp0(fields[i].name, "srcdirs") == 0){
+				tokens = g_strsplit(row[i], "\n", 0);
+				for (tok = tokens; *tok != NULL; tok++){
+					gchar *str = g_strstrip(*tok);
+					if (str != NULL && strlen(str) > 0){
+						host_add_srcdir(host, str);
+					}
+				}
+				g_strfreev(tokens);
+			}
+		}
+		hosts = g_list_append(hosts, host);
+	}
+	mysql_free_result(result);
+
+	return (hosts);
+}
+
 
 gint db_backup_insert(Backup *backup, MYSQL *mysql){
 	gint id = -1;
@@ -257,6 +376,8 @@ void db_hosts_store(GList *hosts, MYSQL *mysql){
 	Host *host;
 	gint id;
 
+	g_return_if_fail(mysql);
+
 	for (ptr = hosts; ptr != NULL; ptr = ptr->next){
 		host = ptr->data;
 		if ((id = db_host_add(host, mysql)) > 0){
@@ -301,3 +422,23 @@ gboolean db_remove_backup(gchar *destdir){
 	return (ret == 0);
 }
 */
+
+gboolean is_valid_ip(const gchar *str){
+	gchar **tokens, **tok, *endptr;
+	gint i = 0;
+
+	tokens = g_strsplit(str, ".", 0);
+	for (tok = tokens; *tok != NULL; tok++){
+		if (strlen(*tok) == 0){
+			return (FALSE);
+		}
+		strtol(*tok, &endptr, 10);
+		if (*endptr != '\0'){
+			return (FALSE);
+		}
+		i++;
+	}
+	g_strfreev(tokens);
+	return (i == 4);
+}
+

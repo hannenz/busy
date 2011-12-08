@@ -74,6 +74,8 @@ void 		host_set_max_age_full(Host *self, gdouble max_age_full);
 void 		host_set_max_age_full(Host *self, gdouble max_age);
 void 		host_set_max_age(Host *self, gdouble max_age);
 void 		host_set_mysql_id(Host *self, gint mysql_id);
+void		host_set_backupdir(Host *self, const gchar *backupdir);
+void		host_set_archivedir(Host *self, const gchar *archivedir);
 
 // Getters
 

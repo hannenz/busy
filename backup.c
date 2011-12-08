@@ -225,6 +225,11 @@ void backup_cancel(Backup *backup){
 void backup_run(Backup *backup, AppData *app_data){
 	g_return_if_fail(BUS_IS_BACKUP(backup));
 
+	if (!g_file_test(host_get_backupdir(backup_get_host(backup)), G_FILE_TEST_IS_DIR)){
+		syslog(LOG_NOTICE, "%s is no valid directory, aborting backup for %s", host_get_backupdir(backup_get_host(backup)), host_get_name(backup_get_host(backup)));
+		return;
+	}
+
 	GList *lptr;
 	backup_set_started(backup, time(NULL));
 	backup_set_state(backup, BUS_BACKUP_STATE_IN_PROGRESS);

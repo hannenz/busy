@@ -461,9 +461,8 @@ static gboolean read_config(AppData *app_data){
 	Host *host;
 	gint i = 0;
 	config_setting_t *cs;
-	const gchar *name;
 	GString *string;
-	const gchar *mysql_login, *mysql_password;
+	const gchar *name, *mysql_login, *mysql_password;
 
 	app_data->hosts = NULL;
 	string = g_string_new(NULL);
@@ -495,8 +494,7 @@ static gboolean read_config(AppData *app_data){
 	}
 
 	db_hosts_store(app_data->hosts, app_data->mysql);
-
-	return (g_list_length(app_data->hosts) > 0);
+	return (TRUE);
 }
 
 /* Reload configuration
@@ -509,15 +507,15 @@ static void reload(gint nr){
 	syslog(LOG_NOTICE, "Reloading configuration");
 
 	// Destroy all hosts
-	for (ptr = app_data->hosts; ptr != NULL; ptr = ptr->next){
-		host = ptr->data;
-		g_object_unref(host);
-	}
+	g_list_foreach(app_data->hosts, (GFunc)g_object_unref, NULL);
 
 	// Read configuration
 	if (!read_config(app_data)){
 		syslog(LOG_ERR, "Failed to (re)load configuration! Sorry, but this means i mus exit now!");
 		exit(-1);
+	}
+	if (g_list_length(app_data->hosts) == 0){
+		app_data->hosts = db_read_hosts(app_data->mysql);
 	}
 	syslog(LOG_NOTICE, "Configuration has been successfully reloaded");
 	return;
@@ -604,6 +602,7 @@ int main(int argc, char **argv){
 	syslog(LOG_NOTICE, "-----------------------------------\n");
 	syslog(LOG_NOTICE, "Daemon has been started\n");
 
+
 //	atexit(cleanup);
 
 	// Initialize App Data structire
@@ -617,8 +616,22 @@ int main(int argc, char **argv){
 
 	// Read configuration
 	if (!read_config(app_data)){
-		syslog(LOG_ERR, "Failed to read config file \"%s\" or no hosts configured.\n", CONFIG_FILE);
+		syslog(LOG_ERR, "Failed to read config file \"%s\"", CONFIG_FILE);
 		exit(-1);
+	}
+
+	// If no hosts configured in config file, try reading from MySQL
+
+	if (g_list_length(app_data->hosts) == 0){
+		syslog(LOG_NOTICE, "No hosts configured in /etc/busy/busy.conf, now reading hosts from MySQL");
+		app_data->hosts = db_read_hosts(app_data->mysql);
+		syslog(LOG_NOTICE, "Read %u hosts from database", g_list_length(app_data->hosts));
+	}
+
+	if (g_list_length(app_data->hosts) == 0){
+		syslog(LOG_ERR, "Absolutely no hosts configured! Please configure at least one host either in %s or use the Web frontend", CONFIG_FILE);
+		//~ syslog(LOG_ERR, "I won't waste any more cpu time now and exit");
+		//~ exit(0);
 	}
 
 	// Setup listener for incoming TCP (localhost port 4000)

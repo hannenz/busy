@@ -16,7 +16,11 @@ gint db_backup_update(Backup *backup, const gchar *key, gchar *value, MYSQL *mys
 gint db_job_add(Job *job, MYSQL *mysql);
 gint db_job_update(Job *job, MYSQL *mysql);
 void db_hosts_store(GList *hosts, MYSQL *mysql);
+GList *db_read_hosts(MYSQL *mysql);
+
 
 gchar *time_t_to_datetime_str(time_t time);
 gint db_remove_backup(gchar *name);
+
+gboolean is_valid_ip(const gchar *str);
 #endif

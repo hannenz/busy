@@ -5,6 +5,7 @@
 
 #include "host.h"
 #include "busy.h"
+#include "db.h"
 
 enum{
 	PROP_0,
@@ -570,6 +571,7 @@ gboolean host_ping(Host *host, gchar *ip){
 	if (ip == NULL){
 		ip = host->ip->str;
 	}
+	g_return_val_if_fail(is_valid_ip(ip), FALSE);
 
 	gint status;
 	gchar *argv[4];
@@ -599,7 +601,7 @@ gchar *host_retrieve_hostname(Host *host, gchar *ip){
 	gchar *argv[6];
 	argv[0] = "/usr/bin/ssh";
 	argv[1] = "-l";
-	argv[2] = USER;
+	argv[2] = DEFAULT_USER;
 	argv[3] = ip;
 	argv[4] = "hostname";
 	argv[5] = NULL;
@@ -686,23 +688,25 @@ void host_dump(Host *host){
 
 	g_return_if_fail(BUS_IS_HOST(host));
 
-	g_print("******** Host Dump *******************\n");
-	g_print("Name:         %s\n", host_get_name(host));
-	g_print("Hostname:     %s\n", host_get_hostname(host));
-	g_print("Rsync Opts:   %s\n", host_get_rsync_opts(host));
-	g_print("Max Incr:     %d\n", host_get_max_incr(host));
-	g_print("Max Age Incr: %f\n", host_get_max_age_incr(host));
-	g_print("Max Age Full: %f\n", host_get_max_age_full(host));
-	g_print("Backup Dir:   %s\n", host->backupdir->str);
+	syslog(LOG_NOTICE, "******** Host Dump *******************\n");
+	syslog(LOG_NOTICE, "Name:         %s\n", host_get_name(host));
+	syslog(LOG_NOTICE, "Hostname:     %s\n", host_get_hostname(host));
+	syslog(LOG_NOTICE, "Rsync Opts:   %s\n", host_get_rsync_opts(host));
+	syslog(LOG_NOTICE, "Max Incr:     %d\n", host_get_max_incr(host));
+	syslog(LOG_NOTICE, "Max Age:      %f\n", host_get_max_age(host));
+	syslog(LOG_NOTICE, "Max Age Incr: %f\n", host_get_max_age_incr(host));
+	syslog(LOG_NOTICE, "Max Age Full: %f\n", host_get_max_age_full(host));
+	syslog(LOG_NOTICE, "Backup Dir:   %s\n", host->backupdir->str);
+	syslog(LOG_NOTICE, "Archive Dir:   %s\n", host->archivedir->str);
 
 	g_object_get(G_OBJECT(host), "excludes", &excludes, "includes", &includes, "srcdirs", &srcdirs, "ips", &ips, "schedule", &schedule, NULL);
 
-	str = string_list_concat(excludes, ", ");	g_print("Excludes:   %s\n", str);	g_free(str);
-	str = string_list_concat(includes, ", ");	g_print("Includes:   %s\n", str);	g_free(str);
-	str = string_list_concat(srcdirs, ", ");	g_print("Srcdirs:    %s\n", str);	g_free(str);
-	str = string_list_concat(ips, ", ");		g_print("Ips:        %s\n", str);	g_free(str);
-	str = string_list_concat(schedule, ", ");	g_print("Schedule:   %s\n", str);	g_free(str);
-	g_print("---------------------------------------\n");
+	str = string_list_concat(excludes, ", ");	syslog(LOG_NOTICE, "Excludes:   %s\n", str);	g_free(str);
+	str = string_list_concat(includes, ", ");	syslog(LOG_NOTICE, "Includes:   %s\n", str);	g_free(str);
+	str = string_list_concat(srcdirs, ", ");	syslog(LOG_NOTICE, "Srcdirs:    %s\n", str);	g_free(str);
+	str = string_list_concat(ips, ", ");		syslog(LOG_NOTICE, "Ips:        %s\n", str);	g_free(str);
+	str = string_list_concat(schedule, ", ");	syslog(LOG_NOTICE, "Schedule:   %s\n", str);	g_free(str);
+	syslog(LOG_NOTICE, "---------------------------------------\n");
 }
 
 static void host_set_property (GObject *object, guint prop_id, const GValue *value, GParamSpec *pspec){
