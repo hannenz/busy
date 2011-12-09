@@ -1,0 +1,9 @@
+#/bin/sh
+
+echo "Type: $1"
+echo "Host: $2"
+echo "Dest: $3"
+
+exit 0
+
+

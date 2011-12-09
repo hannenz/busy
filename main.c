@@ -98,6 +98,8 @@ static void on_backup_finished(Backup *backup, time_t finished, AppData *app_dat
 		host_remove_incr_backups(backup_get_host(backup));
 	}
 
+	backup_post_backup(backup);
+
 	app_data->running_backups = g_list_remove(app_data->running_backups, backup);
 
 	// Clean up
@@ -173,7 +175,7 @@ static gboolean network_read(GIOChannel *channel, GIOCondition condition, gpoint
 	// Read the line
 	ret = g_io_channel_read_line(channel, &str, &len, NULL, NULL);
 	if (ret == G_IO_STATUS_ERROR){
-		syslog(LOG_ERR, "Error reading from network\n");
+		syslog(LOG_NOTICE, "Error reading from network\n");
 		g_object_unref(connection);
 		return (FALSE);
 	}
@@ -196,8 +198,10 @@ static gboolean network_read(GIOChannel *channel, GIOCondition condition, gpoint
 	token = g_strsplit(str, " ", 0);
 
 	// Act upon command
+
 	if (g_strcmp0(token[0], "reload") == 0){
 		// Reload configuration
+		syslog(LOG_NOTICE, "Reload has been requested");
 		reload(0);
 	}
 	else if (g_strcmp0(token[0], "backup") == 0){
@@ -625,13 +629,19 @@ int main(int argc, char **argv){
 	if (g_list_length(app_data->hosts) == 0){
 		syslog(LOG_NOTICE, "No hosts configured in /etc/busy/busy.conf, now reading hosts from MySQL");
 		app_data->hosts = db_read_hosts(app_data->mysql);
-		syslog(LOG_NOTICE, "Read %u hosts from database", g_list_length(app_data->hosts));
 	}
 
 	if (g_list_length(app_data->hosts) == 0){
 		syslog(LOG_ERR, "Absolutely no hosts configured! Please configure at least one host either in %s or use the Web frontend", CONFIG_FILE);
 		//~ syslog(LOG_ERR, "I won't waste any more cpu time now and exit");
 		//~ exit(0);
+	}
+	else {
+		GList *p;
+		for (p = app_data->hosts; p != NULL; p = p->next){
+			Host *host = p->data;
+			syslog(LOG_NOTICE, "%s %f", host_get_name(host), host_get_max_age(host));
+		}
 	}
 
 	// Setup listener for incoming TCP (localhost port 4000)
@@ -644,15 +654,14 @@ int main(int argc, char **argv){
 	g_socket_service_start(service);
 	g_signal_connect(service, "incoming", (GCallback)on_incoming, app_data);
 
-
 	// Call wakeup and archive function once
 	wakeup(app_data);
 	do_archive(app_data);
 
 	// Check preiodically for backups, queue and archives,
 	g_timeout_add_seconds(WAKEUP_INTERVAL, (GSourceFunc)wakeup, app_data);
-	g_timeout_add_seconds(1, (GSourceFunc)do_backup, app_data);
-	g_timeout_add_seconds(3600, (GSourceFunc)do_archive, app_data);
+	g_timeout_add_seconds(10, (GSourceFunc)do_backup, app_data);
+	g_timeout_add_seconds(6 * 3600, (GSourceFunc)do_archive, app_data);
 
 	// Run main loop
 	main_loop = g_main_loop_new(NULL, FALSE);

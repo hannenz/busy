@@ -35,20 +35,166 @@ void db_close(MYSQL *mysql){
 	}
 }
 
+GList *g_list_clone(GList *src){
+	GList *copy = NULL, *p;
+	for (p = src; p != NULL; p = p->next){
+		copy = g_list_append(copy, g_strdup(p->data));
+	}
+	return (copy);
+}
+
+
+Host *db_read_host(MYSQL_ROW row, MYSQL_FIELD *fields, gint num_fields, Host *default_host){
+
+	Host *host;
+	gchar **tokens, **tok;
+	gint i;
+
+	host = host_new();
+
+	if (default_host != NULL && BUS_IS_HOST(default_host)){
+		host_set_user(host, host_get_user(default_host));
+		host_set_email(host, host_get_email(default_host));
+		host_set_backupdir(host, host_get_backupdir(default_host));
+		host_set_archivedir(host, host_get_archivedir(default_host));
+		host_set_max_age(host, host_get_max_age(default_host));
+		host_set_max_age_incr(host, host_get_max_age_incr(default_host));
+		host_set_max_age_full(host, host_get_max_age_full(default_host));
+		host_set_max_incr(host, host_get_max_incr(default_host));
+		host_set_rsync_opts(host, host_get_rsync_opts(default_host));
+
+		host->excludes = g_list_clone(default_host->excludes);
+		host->schedule = g_list_clone(default_host->schedule);
+		host->srcdirs = g_list_clone(default_host->srcdirs);
+		host->ips = g_list_clone(default_host->ips);
+	}
+
+	for (i = 0; i < num_fields; i++){
+		if (g_strcmp0(fields[i].name, "id") == 0){
+			host_set_mysql_id(host, atoi(row[i]));
+		}
+		if (g_strcmp0(fields[i].name, "name") == 0){
+			if (row[i] == 0 || strlen(row[i]) == 0){
+				syslog(LOG_ERR, "Invalid name");
+				g_object_unref(host);
+				continue;
+			}
+			host_set_name(host, row[i]);
+		}
+		if (g_strcmp0(fields[i].name, "hostname") == 0){
+			if (row[i] == NULL || strlen(row[i]) == 0){
+				syslog(LOG_ERR, "Invalid hostname");
+				g_object_unref(host);
+				continue;
+			}
+			host_set_hostname(host, row[i]);
+		}
+		if (g_strcmp0(fields[i].name, "user") == 0){
+			host_set_user(host, row[i] ? row[i] : DEFAULT_USER);
+		}
+		if (g_strcmp0(fields[i].name, "email") == 0){
+			if (row[i] != NULL){
+				host_set_email(host, row[i]);
+			}
+		}
+		if (g_strcmp0(fields[i].name, "max_incr") == 0){
+			host_set_max_incr(host, row[i] ? atoi(row[i]) : DEFAULT_MAX_INCR);
+		}
+		if (g_strcmp0(fields[i].name, "max_age") == 0){
+			host_set_max_age(host, row[i] ? atof(row[i]) : DEFAULT_MAX_AGE);
+		}
+		if (g_strcmp0(fields[i].name, "max_age_incr") == 0){
+			host_set_max_age_incr(host, row[i] ? atof(row[i]) : DEFAULT_MAX_AGE_INCR);
+		}
+		if (g_strcmp0(fields[i].name, "max_age_full") == 0){
+			host_set_max_age_full(host, row[i] ? atof(row[i]) : DEFAULT_MAX_AGE_FULL);
+		}
+		if (g_strcmp0(fields[i].name, "rsync_opts") == 0){
+			host_set_rsync_opts(host, row[i] ? row[i] : DEFAULT_RSYNC_OPTS);
+		}
+		if (g_strcmp0(fields[i].name, "archivedir") == 0){
+			host_set_archivedir(host, row[i] ? row[i] : "");
+		}
+		if (g_strcmp0(fields[i].name, "backupdir") == 0){
+			host_set_backupdir(host, row[i] ? row[i] : DEFAULT_BACKUPDIR);
+		}
+		if (g_strcmp0(fields[i].name, "schedule") == 0){
+			if (row[i] != NULL){
+				tokens = g_strsplit(row[i], "\n", 0);
+				for (tok = tokens; *tok != NULL; tok++){
+					gchar *str = g_strstrip(*tok);
+					if (str != NULL && strlen(str) > 0){
+						host_add_schedule(host, str);
+					}
+				}
+				g_strfreev(tokens);
+			}
+		}
+		if (g_strcmp0(fields[i].name, "excludes") == 0){
+			tokens = g_strsplit(row[i], "\n", 0);
+			for (tok = tokens; *tok != NULL; tok++){
+				gchar *str = g_strstrip(*tok);
+				if (str != NULL && strlen(str) > 0){
+					host_add_exclude(host, str);
+				}
+			}
+			g_strfreev(tokens);
+		}
+		if (g_strcmp0(fields[i].name, "ips") == 0){
+			tokens = g_strsplit(row[i], "\n", 0);
+			for (tok = tokens; *tok != NULL; tok++){
+				gchar *str;
+				str = g_strstrip(*tok);
+				if (str != NULL && strlen(str) > 0 && is_valid_ip(str)){
+					host_add_ip(host,  str);
+				}
+			}
+			g_strfreev(tokens);
+		}
+		if (g_strcmp0(fields[i].name, "srcdirs") == 0){
+			tokens = g_strsplit(row[i], "\n", 0);
+			for (tok = tokens; *tok != NULL; tok++){
+				gchar *str = g_strstrip(*tok);
+				if (str != NULL && strlen(str) > 0){
+					host_add_srcdir(host, str);
+				}
+			}
+			g_strfreev(tokens);
+		}
+	}
+	return (host);
+}
+
 GList *db_read_hosts(MYSQL *mysql){
 	gchar *query;
-	gint ret, num_fields, i;
+	gint ret, num_fields;
 	MYSQL_RES *result;
 	MYSQL_ROW row;
 	GList *hosts = NULL;
-	Host *host;
-	gchar **tokens, **tok;
+	Host *host, *default_host;
 	MYSQL_FIELD *fields;
 
 	g_return_val_if_fail(mysql, NULL);
 
+	default_host = NULL;
 
-	query = g_strdup_printf("SELECT *FROM `hosts`");
+	// Read default host
+	query = g_strdup_printf("SELECT * FROM `hosts` WHERE `name`='default'");
+	ret = mysql_real_query(mysql, query, strlen(query));
+	if (ret != 0){
+		syslog(LOG_ERR, "MySQL Query failed: %s %s", query, mysql_error(mysql));
+		return (NULL);
+	}
+	result = mysql_store_result(mysql);
+	num_fields = mysql_num_fields(result);
+	fields = mysql_fetch_fields(result);
+
+	if ((row = mysql_fetch_row(result))){
+		default_host = db_read_host(row, fields, num_fields, default_host);
+	}
+
+	// Read hosts
+	query = g_strdup_printf("SELECT * FROM `hosts` WHERE `name` != 'default'");
 	ret = mysql_real_query(mysql, query, strlen(query));
 	if (ret != 0){
 		syslog(LOG_ERR, "MySQL Query failed: %s %s", query, mysql_error(mysql));
@@ -60,90 +206,7 @@ GList *db_read_hosts(MYSQL *mysql){
 	fields = mysql_fetch_fields(result);
 
 	while ((row = mysql_fetch_row(result))){
-		host = host_new();
-		for (i = 0; i < num_fields; i++){
-			if (g_strcmp0(fields[i].name, "name") == 0){
-				if (row[i] == 0 || strlen(row[i]) == 0){
-					syslog(LOG_ERR, "Invalid name");
-					g_object_unref(host);
-					continue;
-				}
-				host_set_name(host, row[i]);
-			}
-			if (g_strcmp0(fields[i].name, "hostname") == 0){
-				if (row[i] == NULL || strlen(row[i]) == 0){
-					syslog(LOG_ERR, "Invalid hostname");
-					g_object_unref(host);
-					continue;
-				}
-				host_set_hostname(host, row[i]);
-			}
-			if (g_strcmp0(fields[i].name, "user") == 0){
-				host_set_user(host, row[i] ? row[i] : DEFAULT_USER);
-			}
-			if (g_strcmp0(fields[i].name, "max_incr") == 0){
-				host_set_max_incr(host, row[i] ? atoi(row[i]) : DEFAULT_MAX_INCR);
-			}
-			if (g_strcmp0(fields[i].name, "max_age") == 0){
-				host_set_max_age(host, row[i] ? atof(row[i]) : DEFAULT_MAX_AGE);
-			}
-			if (g_strcmp0(fields[i].name, "max_age_incr") == 0){
-				host_set_max_age_incr(host, row[i] ? atof(row[i]) : DEFAULT_MAX_AGE_INCR);
-			}
-			if (g_strcmp0(fields[i].name, "max_age_full") == 0){
-				host_set_max_age_full(host, row[i] ? atof(row[i]) : DEFAULT_MAX_AGE_FULL);
-			}
-			if (g_strcmp0(fields[i].name, "rsync_opts") == 0){
-				host_set_rsync_opts(host, row[i] ? row[i] : DEFAULT_RSYNC_OPTS);
-			}
-			if (g_strcmp0(fields[i].name, "archivedir") == 0){
-				host_set_archivedir(host, row[i] ? row[i] : "");
-			}
-			if (g_strcmp0(fields[i].name, "backupdir") == 0){
-				host_set_backupdir(host, row[i] ? row[i] : DEFAULT_BACKUPDIR);
-			}
-			if (g_strcmp0(fields[i].name, "schedule") == 0){
-				tokens = g_strsplit(row[i], "\n", 0);
-				for (tok = tokens; *tok != NULL; tok++){
-					gchar *str = g_strstrip(*tok);
-					if (str != NULL && strlen(str) > 0){
-						host_add_schedule(host, str);
-					}
-				}
-				g_strfreev(tokens);
-			}
-			if (g_strcmp0(fields[i].name, "excludes") == 0){
-				tokens = g_strsplit(row[i], "\n", 0);
-				for (tok = tokens; *tok != NULL; tok++){
-					gchar *str = g_strstrip(*tok);
-					if (str != NULL && strlen(str) > 0){
-						host_add_exclude(host, str);
-					}
-				}
-				g_strfreev(tokens);
-			}
-			if (g_strcmp0(fields[i].name, "ips") == 0){
-				tokens = g_strsplit(row[i], "\n", 0);
-				for (tok = tokens; *tok != NULL; tok++){
-					gchar *str;
-					str = g_strstrip(*tok);
-					if (str != NULL && strlen(str) > 0 && is_valid_ip(str)){
-						host_add_ip(host,  str);
-					}
-				}
-				g_strfreev(tokens);
-			}
-			if (g_strcmp0(fields[i].name, "srcdirs") == 0){
-				tokens = g_strsplit(row[i], "\n", 0);
-				for (tok = tokens; *tok != NULL; tok++){
-					gchar *str = g_strstrip(*tok);
-					if (str != NULL && strlen(str) > 0){
-						host_add_srcdir(host, str);
-					}
-				}
-				g_strfreev(tokens);
-			}
-		}
+		host = db_read_host(row, fields, num_fields, default_host);
 		hosts = g_list_append(hosts, host);
 	}
 	mysql_free_result(result);

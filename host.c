@@ -25,7 +25,8 @@ enum{
 	PROP_USER,
 	PROP_MYSQL_ID,
 	PROP_MAX_AGE,
-	PROP_ARCHIVEDIR
+	PROP_ARCHIVEDIR,
+	PROP_EMAIL
 };
 
 enum{
@@ -51,6 +52,7 @@ static void host_init (Host *object){
 	host->includes = NULL;
 	host->ips = NULL;
 	host->schedule = NULL;
+	host->email = g_string_new(NULL);
 }
 
 static void host_finalize (GObject *object) {
@@ -68,6 +70,7 @@ static void host_finalize (GObject *object) {
 	g_list_free(host->includes);
 	g_list_free(host->ips);
 	g_list_free(host->schedule);
+	g_string_free(host->email, TRUE);
 
 	G_OBJECT_CLASS (host_parent_class)->finalize (object);
 }
@@ -91,7 +94,7 @@ gchar *rtrim (gchar *s){
 
 Host *host_new_from_config_setting(config_t *config, config_setting_t *cs){
 	Host *host;
-	const gchar *name, *hostname, *rsync_opts, *backupdir, *user, *archivedir;
+	const gchar *name, *hostname, *rsync_opts, *backupdir, *user, *archivedir, *email;
 	long int mi;
 	gint max_incr;
 	gdouble max_age_incr, max_age_full, max_age;
@@ -152,6 +155,12 @@ Host *host_new_from_config_setting(config_t *config, config_setting_t *cs){
 		}
 	}
 
+	if (config_setting_lookup_string(cs, "email", &email) == CONFIG_FALSE){
+		if (config_lookup_string(config, "default.email", &email) == CONFIG_FALSE){
+			email = NULL;
+		}
+	}
+
 	if (name == NULL || hostname == NULL || backupdir == NULL){
 		g_object_unref(host);
 		return (NULL);
@@ -172,6 +181,7 @@ Host *host_new_from_config_setting(config_t *config, config_setting_t *cs){
 		"max_age_full", max_age_full,
 		"max_age", max_age,
 		"archivedir", archivedir,
+		"email", email,
 		NULL
 	);
 
@@ -402,6 +412,42 @@ void host_remove_incr_backups(Host *host){
 	g_free(path);
 }
 
+static void on_sendmail_exit(GPid pid, gint status, gpointer udata){
+	syslog(LOG_NOTICE, "sendmail exitet with code %u", WEXITSTATUS(status));
+}
+
+gint host_send_email(Host *self, const gchar *subject, const gchar *message){
+	gchar *argv[5];
+	GError *error = NULL;
+	GPid pid;
+	gint stdin;
+
+	g_return_val_if_fail(BUS_IS_HOST(self), -1);
+	g_return_val_if_fail(strlen(self->email->str) > 0, -1);
+
+	syslog(LOG_NOTICE, "Sending email to %s", self->name->str);
+
+	argv[0] = "/usr/sbin/sendmail";
+	argv[1] = self->email->str;
+	argv[2] = NULL;
+
+	g_spawn_async_with_pipes(NULL, argv, NULL, G_SPAWN_DO_NOT_REAP_CHILD, NULL, NULL, &pid, &stdin, NULL, NULL, &error);
+	if (error){
+		syslog(LOG_NOTICE, "Error: %s", error->message);
+		g_error_free(error);
+	}
+	g_child_watch_add(pid, on_sendmail_exit, self);
+	GIOChannel *in;
+	gchar *buf = g_strdup_printf("Subject: %s\n%s\n.\n", subject, message);
+	error = NULL;
+	in = g_io_channel_unix_new(stdin);
+	g_io_channel_write_chars(in, buf, -1, NULL, &error);
+	g_io_channel_close(in);
+	g_free(buf);
+
+	return (0);
+}
+
 void host_set_name(Host *self, const gchar *name){
 	g_return_if_fail(BUS_IS_HOST(self));
 	g_string_assign(self->name, name);
@@ -465,7 +511,7 @@ void host_set_max_age_full(Host *self, gdouble max_age_full){
 
 void host_set_max_age(Host *self, gdouble max_age){
 	g_return_if_fail(BUS_IS_HOST(self));
-	self->max_age_full = max_age;
+	self->max_age = max_age;
 	g_object_notify(G_OBJECT(self), "max_age");
 }
 
@@ -565,7 +611,22 @@ void host_set_mysql_id(Host *self, gint mysql_id){
 	g_object_notify(G_OBJECT(self), "mysql_id");
 }
 
+void host_set_email(Host *self, const gchar *email){
+	g_return_if_fail(BUS_IS_HOST(self));
+	g_string_assign(self->email, email);
+	g_object_notify(G_OBJECT(self), "email");
+}
+
+const gchar *host_get_email(Host *self){
+	g_return_val_if_fail(BUS_IS_HOST(self), NULL);
+	return (self->email->str);
+}
+
 gboolean host_ping(Host *host, gchar *ip){
+	gint status;
+	gchar *argv[4];
+	GError *error = NULL;
+
 	g_return_val_if_fail(BUS_IS_HOST(host), FALSE);
 
 	if (ip == NULL){
@@ -573,13 +634,10 @@ gboolean host_ping(Host *host, gchar *ip){
 	}
 	g_return_val_if_fail(is_valid_ip(ip), FALSE);
 
-	gint status;
-	gchar *argv[4];
 	argv[0] = "/bin/ping";
 	argv[1] = "-c 1";
 	argv[2] = ip;
 	argv[3] = NULL;
-	GError *error = NULL;
 
 	if (g_spawn_sync(NULL, argv, NULL, G_SPAWN_STDOUT_TO_DEV_NULL | G_SPAWN_STDERR_TO_DEV_NULL, NULL, NULL, NULL, NULL, &status, &error)){
 		return (WEXITSTATUS(status) == 0);
@@ -767,6 +825,9 @@ static void host_set_property (GObject *object, guint prop_id, const GValue *val
 	case PROP_MYSQL_ID:
 		host_set_mysql_id(host, g_value_get_int(value));
 		break;
+	case PROP_EMAIL:
+		host_set_email(host, g_value_get_string(value));
+		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 		break;
@@ -830,6 +891,9 @@ static void host_get_property (GObject *object, guint prop_id, GValue *value, GP
 		break;
 	case PROP_MYSQL_ID:
 		g_value_set_int(value, host->mysql_id);
+		break;
+	case PROP_EMAIL:
+		g_value_set_string(value, host->email->str);
 		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -921,6 +985,10 @@ static void host_class_init (HostClass *klass){
 	g_object_class_install_property (object_class,
 	                                 PROP_MYSQL_ID,
 	                                 g_param_spec_int("mysql_id", "mysql-id", "MySQL Id", 0, G_MAXINT, 0, G_PARAM_READWRITE)
+									);
+	g_object_class_install_property(object_class,
+									PROP_EMAIL,
+									g_param_spec_string("email", "email", "E-Mail", "", G_PARAM_READWRITE)
 									);
 
 	host_signals[CREATED] = g_signal_new ("created", G_OBJECT_CLASS_TYPE (klass), G_SIGNAL_RUN_LAST, G_STRUCT_OFFSET (HostClass, created), NULL, NULL, g_cclosure_marshal_VOID__VOID, G_TYPE_NONE, 0);

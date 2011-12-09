@@ -1,0 +1,13 @@
+#!/bin/sh
+
+# This script is executed after a backup has finished.
+# Parameters are
+# $1: Name of the host
+# $2: Backup state ("success", "failed", ...)
+# $3: Path to backup directory
+
+echo "Host: $1"
+echo "Stat: $2"
+echo "Path: $3"
+
+exit 0

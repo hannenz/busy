@@ -202,6 +202,23 @@ static void on_job_finished(Job *job, gint status, gpointer udata){
 		backup_set_state(backup, backup->failures == 0 ? BUS_BACKUP_STATE_SUCCESS : BUS_BACKUP_STATE_FAILED);
 		backup_set_finished(backup, time(NULL));
 		g_signal_emit_by_name(G_OBJECT(backup), "finished", backup_get_finished(backup));
+
+		if (backup->failures > 0){
+			gchar *subject = "Backup failed";
+			gchar *message, datestr[20];
+			Host *host = backup_get_host(backup);
+			time_t t = backup_get_started(backup);
+
+			strftime(datestr, sizeof(datestr), "%x %H:%M", localtime(&t));
+			message = g_strdup_printf("Dear %s\nI tried to backup your host \"%s\" on %s but I am afraid that %u of the backup's jobs failed. Please refer to the Logfiles or the Web frontend to find out what exactly went wrong\nSincerly\nYour BUSY on %s",
+				host_get_user(host),
+				host_get_name(host),
+				datestr,
+				backup->failures,
+				getenv("HOSTNAME")
+			);
+			host_send_email(host, subject, message);
+		}
 	}
 }
 
@@ -222,12 +239,103 @@ void backup_cancel(Backup *backup){
 	backup_set_state(backup, BUS_BACKUP_STATE_CANCELLED);
 }
 
+gboolean backup_pre_backup(Backup *backup){
+	Host *host;
+	GError *error = NULL;
+	gchar *stdout, *stderr;
+	gint exit;
+
+	g_return_val_if_fail(BUS_IS_BACKUP(backup), FALSE);
+
+	host = backup_get_host(backup);
+
+
+	if (!g_file_test(host_get_backupdir(host), G_FILE_TEST_IS_DIR)){
+		syslog(LOG_NOTICE, "%s is no valid directory, aborting backup for %s", host_get_backupdir(backup_get_host(backup)), host_get_name(backup_get_host(backup)));
+		return (FALSE);
+	}
+
+	if (g_file_test("/etc/busy/pre-backup", G_FILE_TEST_IS_EXECUTABLE)){
+
+		gchar *argv[] = {
+			"/bin/sh",
+			"/etc/busy/pre-backup",
+			(gchar*)backup_get_backup_type_str(backup),
+			(gchar*)host_get_name(host),
+			(gchar*)host_get_backupdir(host),
+			NULL
+		};
+
+		syslog(LOG_NOTICE, "Running pre backup script");
+		backup_log(backup, "Running pre backup script");
+
+		error = NULL;
+		if (!g_spawn_sync(NULL, argv, NULL, 0, NULL, NULL, &stdout, &stderr, &exit, &error)){
+			syslog(LOG_NOTICE, "g_spawn_sync() failed!");
+		}
+		if (error){
+			syslog(LOG_NOTICE, "Spawning child process for pre backup script failed. Aborting backup!: %s", error->message);
+			g_error_free(error);
+			return (FALSE);
+		}
+
+		if (stdout != NULL){
+			backup_log(backup, "%s", stdout);
+			syslog(LOG_NOTICE, "%s", stdout);
+		}
+
+		if (WIFEXITED(exit)){
+			if (WEXITSTATUS(exit) == 0){
+				return (TRUE);
+
+			}
+		}
+		syslog(LOG_NOTICE, "Pre backup script failed. Aborting backup");
+		return (FALSE);
+	}
+	return (TRUE);
+}
+
+void backup_post_backup(Backup *backup){
+	GError *error;
+	gint exit;
+	gchar *stdout, *stderr;
+	Host *host;
+
+	g_return_if_fail(BUS_IS_BACKUP(backup));
+
+	host = backup_get_host(backup);
+
+	if (g_file_test("/etc/busy/post-backup", G_FILE_TEST_IS_EXECUTABLE)){
+		syslog(LOG_NOTICE, "Running post backup script");
+		backup_log(backup, "Running pre backup script");
+
+		gchar *argv[] = {
+			"/bin/sh",
+			"/etc/busy/post-backup",
+			(gchar*)host_get_name(host),
+			(gchar*)backup_get_state_str(backup),
+			(gchar*)backup_get_full_path(backup)
+		};
+
+		error = NULL;
+		if (!g_spawn_sync(NULL, argv, NULL, 0, NULL, NULL, &stdout, &stderr, &exit, &error)){
+			if (error){
+				syslog(LOG_NOTICE, "Launching post backup script failed: %s", error->message);
+				g_error_free(error);
+			}
+		}
+		backup_log(backup, stdout);
+		syslog(LOG_NOTICE, stdout);
+	}
+}
+
 void backup_run(Backup *backup, AppData *app_data){
 	g_return_if_fail(BUS_IS_BACKUP(backup));
 
-	if (!g_file_test(host_get_backupdir(backup_get_host(backup)), G_FILE_TEST_IS_DIR)){
-		syslog(LOG_NOTICE, "%s is no valid directory, aborting backup for %s", host_get_backupdir(backup_get_host(backup)), host_get_name(backup_get_host(backup)));
-		return;
+	if (!backup_pre_backup(backup)){
+		backup_set_state(backup, BUS_BACKUP_STATE_FAILED);
+		host_send_email(backup_get_host(backup), "Backup failed", "Pre backup failed!");
 	}
 
 	GList *lptr;
@@ -433,7 +541,26 @@ GList *backup_get_running_jobs(Backup *backup){
 	return (backup->jobs);
 }
 
-void watch_archive(GPid pid, gint status, gchar *backup){
+void on_archive_failed(Host *host){
+	gchar *subject = "Archiving backup failed";
+	gchar *message, datestr[20];
+	time_t t = time(NULL);
+
+	strftime(datestr, sizeof(datestr), "%x %H:%M", localtime(&t));
+	message = g_strdup_printf("Dear %s\nI tried to archive a backup on your host \"%s\" at %s but I am afraid ,it failed. \nSincerly\nYour BUSY on %s",
+		host_get_user(host),
+		host_get_name(host),
+		datestr,
+		getenv("HOSTNAME")
+	);
+	host_send_email(host, subject, message);
+}
+
+
+void watch_archive(GPid pid, gint status, Host *host){
+	gchar *backup;
+	backup = g_object_get_data(G_OBJECT(host), "backup");
+
 	if (WIFEXITED(status)){
 		if (WEXITSTATUS(status) == 0){
 			syslog(LOG_NOTICE, "Backup \"%s\" has been archived successfully", backup);
@@ -445,21 +572,15 @@ void watch_archive(GPid pid, gint status, gchar *backup){
 		}
 		else {
 			syslog(LOG_ERR, "Archiving backup \"%s\" failed. Tar exited with %u", backup, WEXITSTATUS(status));
+			on_archive_failed(host);
 		}
 	}
 	else {
 		syslog(LOG_ERR, "Archiving backup \"%s\" failed. Tar exited unnormally", backup);
+		on_archive_failed(host);
 	}
 	g_free(backup);
 }
-
-//~ static gboolean on_gio_out(GIOChannel *source, GIOCondition condition, gpointer udata){
-	//~ gchar *line;
-	//~ gsize len;
-	//~ g_io_channel_read_line(source, &line, &len, NULL, NULL);
-	//~ syslog(LOG_NOTICE, ">>>>>>>>>>>>>> %s", line);
-	//~ return (TRUE);
-//~ }
 
 void backup_archive(ExistingBackup *eback, Host *host){
 	const gchar *archivedir;
@@ -467,7 +588,6 @@ void backup_archive(ExistingBackup *eback, Host *host){
 	gint argc, stdin, stdout, stderr;
 	GPid pid;
 	GError *error;
-
 
 	archivedir = host_get_archivedir(host);
 	if (archivedir != NULL && g_file_test(archivedir, G_FILE_TEST_IS_DIR)){
@@ -488,12 +608,8 @@ void backup_archive(ExistingBackup *eback, Host *host){
 				syslog(LOG_WARNING, "Spawning process failed: %s\n", error->message);
 			}
 			syslog(LOG_NOTICE, "Archiving Backup: \"%s\" (tar pid=%u)", backup, pid);
-			g_child_watch_add(pid, (GChildWatchFunc)watch_archive, g_strdup(backup));
-			//~ GIOChannel *out, *err;
-			//~ out = g_io_channel_unix_new(stdout);
-			//~ err = g_io_channel_unix_new(stderr);
-			//~ g_io_add_watch(out, G_IO_IN, on_gio_out, NULL);
-			//~ g_io_add_watch(err, G_IO_IN, on_gio_out, NULL);
+			g_object_set_data(G_OBJECT(host), "backup", g_strdup(backup));
+			g_child_watch_add(pid, (GChildWatchFunc)watch_archive, host);
 		}
 
 		g_free(archive);
@@ -502,6 +618,7 @@ void backup_archive(ExistingBackup *eback, Host *host){
 	}
 	else {
 		syslog(LOG_ERR, "Cannot archive backup since %s is not a directory", archivedir);
+		on_archive_failed(host);
 	}
 }
 

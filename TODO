@@ -1,0 +1,11 @@
+- Send log files as attachments in Notifictaion emails
+- Implement Pre/Post Archive
+- Handle failed / cancelled backups better (exclude from time/ date checks)
+- Better place for pre/post scripts than /etc...?!
+- Rewrite Documentation
+- Web frontend installer
+- Web frontend authentification
+- MAYBE: Integrity check on backups (md5sum or something...)
+- Make more bullet proof
+
+

@@ -20,6 +20,10 @@ install:
 	cp ./busyd ${PREFIX}
 	cp ./init.d/busy /etc/init.d/
 	cp ./conf/busy.conf ${CONFDIR}
+	cp ./conf/pre-backup ${CONFDIR}
+	cp ./conf/post-backup ${CONFDIR}
+	chmod +x ${CONFDIR}/pre-backup
+	chmod +x ${CONFDIR}/post-backup
 	chmod +x /etc/init.d/busy
 
 	# Make links in rc.d

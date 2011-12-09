@@ -54,6 +54,7 @@ struct _Host
 	gdouble max_age_full;
 	gdouble max_age_incr;
 	gint mysql_id;
+	GString *email;
 
 };
 
@@ -93,6 +94,7 @@ gdouble		host_get_max_age(Host *host);
 gint		host_get_n_incr(Host *host);
 gint		host_get_n_full(Host *host);
 gint		host_get_mysql_id(Host *self);
+const gchar *host_get_email(Host *self);
 ExistingBackup *host_get_youngest_backup(Host *host, BusBackupType type);
 
 
@@ -106,6 +108,8 @@ void 		host_add_schedule(Host *self, const gchar *str);
 void		host_dump(Host *host);
 GList		*host_read_backups(Host *host, BusBackupType type);
 void		host_free_existing_backup(ExistingBackup *eb);
+void		host_set_email(Host *host, const gchar *email);
+gint		host_send_email(Host *host, const gchar *subject, const gchar *message);
 
 // Checkers
 
