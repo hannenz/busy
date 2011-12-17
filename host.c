@@ -517,8 +517,14 @@ void host_set_max_age(Host *self, gdouble max_age){
 
 void host_add_exclude(Host *self, const gchar *exclude){
 	g_return_if_fail(BUS_IS_HOST(self));
-	self->excludes = g_list_append(self->excludes, g_strdup(exclude));
-	g_object_notify(G_OBJECT(self), "excludes");
+	gchar *e = g_strdup(exclude);
+	if (!g_list_find_custom(self->excludes, e, (GCompareFunc)g_strcmp0)){
+		self->excludes = g_list_append(self->excludes, e);
+		g_object_notify(G_OBJECT(self), "excludes");
+	}
+	else {
+		g_free(e);
+	}
 }
 
 void host_add_include(Host *self, const gchar *include){
@@ -529,20 +535,41 @@ void host_add_include(Host *self, const gchar *include){
 
 void host_add_srcdir(Host *self, const gchar *srcdir){
 	g_return_if_fail(BUS_IS_HOST(self));
-	self->srcdirs = g_list_append(self->srcdirs, rtrim(g_strdup(srcdir)));
-	g_object_notify(G_OBJECT(self), "srcdirs");
+
+	gchar *s = rtrim(g_strdup(srcdir));
+	if (!g_list_find_custom(self->srcdirs, s, (GCompareFunc)g_strcmp0)){
+		self->srcdirs = g_list_append(self->srcdirs, s);
+		g_object_notify(G_OBJECT(self), "srcdirs");
+	}
+	else {
+		g_free(s);
+	}
 }
 
 void host_add_ip(Host *self, const gchar *ip){
 	g_return_if_fail(BUS_IS_HOST(self));
-	self->ips = g_list_append(self->ips, g_strdup(ip));
-	g_object_notify(G_OBJECT(self), "ips");
+
+	gchar *i = g_strdup(ip);
+	if (!g_list_find_custom(self->ips, i, (GCompareFunc)g_strcmp0)){
+		self->ips = g_list_append(self->ips, i);
+		g_object_notify(G_OBJECT(self), "ips");
+	}
+	else {
+		g_free(i);
+	}
 }
 
 void host_add_schedule(Host *self, const gchar *schedule){
 	g_return_if_fail(BUS_IS_HOST(self));
-	self->schedule = g_list_append(self->schedule, g_strdup(schedule));
-	g_object_notify(G_OBJECT(self), "schedule");
+
+	gchar *s = g_strdup(schedule);
+	if (!g_list_find_custom(self->schedule, s, (GCompareFunc)g_strcmp0)){
+		self->schedule = g_list_append(self->schedule, s);
+		g_object_notify(G_OBJECT(self), "schedule");
+	}
+	else {
+		g_free(s);
+	}
 }
 
 const gchar *host_get_name(Host *self){

@@ -640,6 +640,7 @@ int main(int argc, char **argv){
 		GList *p;
 		for (p = app_data->hosts; p != NULL; p = p->next){
 			Host *host = p->data;
+			host_dump(host);
 			syslog(LOG_NOTICE, "%s %f", host_get_name(host), host_get_max_age(host));
 		}
 	}
