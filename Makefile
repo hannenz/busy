@@ -13,6 +13,9 @@ busyd: $(OBJECTS)
 %.o: %.c %.h
 	$(CC) -Wall -g -c $(CFLAGS) $<
 
+reinstall:
+	cp ./busyd ${PREFIX}
+
 install:
 	test -d "${BACKUPDIR}" || mkdir -p "${BACKUPDIR}"
 	test -d "${CONFDIR}" || mkdir -p "${CONFDIR}"

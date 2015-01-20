@@ -255,19 +255,19 @@ gboolean backup_pre_backup(Backup *backup){
 		return (FALSE);
 	}
 
-	if (g_file_test("/etc/busy/pre-backup", G_FILE_TEST_IS_EXECUTABLE)){
+	if (g_file_test(PRE_BACKUP_SCRIPT, G_FILE_TEST_IS_EXECUTABLE)){
 
 		gchar *argv[] = {
 			"/bin/sh",
-			"/etc/busy/pre-backup",
+			PRE_BACKUP_SCRIPT,
 			(gchar*)backup_get_backup_type_str(backup),
 			(gchar*)host_get_name(host),
 			(gchar*)host_get_backupdir(host),
 			NULL
 		};
 
-		syslog(LOG_NOTICE, "Running pre backup script");
-		backup_log(backup, "Running pre backup script");
+		syslog(LOG_NOTICE, "Running pre backup script: %s", PRE_BACKUP_SCRIPT);
+		backup_log(backup, "Running pre backup script: %s", PRE_BACKUP_SCRIPT);
 
 		error = NULL;
 		if (!g_spawn_sync(NULL, argv, NULL, 0, NULL, NULL, &stdout, &stderr, &exit, &error)){
@@ -306,13 +306,13 @@ void backup_post_backup(Backup *backup){
 
 	host = backup_get_host(backup);
 
-	if (g_file_test("/etc/busy/post-backup", G_FILE_TEST_IS_EXECUTABLE)){
-		syslog(LOG_NOTICE, "Running post backup script");
-		backup_log(backup, "Running pre backup script");
+	if (g_file_test(POST_BACKUP_SCRIPT, G_FILE_TEST_IS_EXECUTABLE)){
+		syslog(LOG_NOTICE, "Running post backup script: %s", POST_BACKUP_SCRIPT);
+		backup_log(backup, "Running pre backup script: %s", POST_BACKUP_SCRIPT);
 
 		gchar *argv[] = {
 			"/bin/sh",
-			"/etc/busy/post-backup",
+			POST_BACKUP_SCRIPT,	
 			(gchar*)host_get_name(host),
 			(gchar*)backup_get_state_str(backup),
 			(gchar*)backup_get_full_path(backup)

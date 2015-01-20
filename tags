@@ -1,0 +1,251 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.9~svn20110310	//
+CREATED	host.c	/^	CREATED,$/;"	e	enum:__anon4	file:
+FAILURE_SIGNAL	backup.c	/^	FAILURE_SIGNAL,$/;"	e	enum:__anon2	file:
+FINISHED	job.c	/^	FINISHED,$/;"	e	enum:__anon6	file:
+FINISHED_SIGNAL	backup.c	/^	FINISHED_SIGNAL,$/;"	e	enum:__anon2	file:
+JOB_FINISHED	backup.c	/^	JOB_FINISHED,$/;"	e	enum:__anon2	file:
+JOB_STARTED	backup.c	/^	JOB_STARTED,$/;"	e	enum:__anon2	file:
+LAST_SIGNAL	backup.c	/^	LAST_SIGNAL$/;"	e	enum:__anon2	file:
+LAST_SIGNAL	host.c	/^	LAST_SIGNAL$/;"	e	enum:__anon4	file:
+LAST_SIGNAL	job.c	/^	LAST_SIGNAL$/;"	e	enum:__anon6	file:
+PROP_0	backup.c	/^	PROP_0,$/;"	e	enum:__anon1	file:
+PROP_0	host.c	/^	PROP_0,$/;"	e	enum:__anon3	file:
+PROP_0	job.c	/^	PROP_0,$/;"	e	enum:__anon5	file:
+PROP_ARCHIVEDIR	host.c	/^	PROP_ARCHIVEDIR,$/;"	e	enum:__anon3	file:
+PROP_BACKUPDIR	host.c	/^	PROP_BACKUPDIR,$/;"	e	enum:__anon3	file:
+PROP_EMAIL	host.c	/^	PROP_EMAIL$/;"	e	enum:__anon3	file:
+PROP_EXCLUDES	host.c	/^	PROP_EXCLUDES,$/;"	e	enum:__anon3	file:
+PROP_FAILURES	backup.c	/^	PROP_FAILURES,$/;"	e	enum:__anon1	file:
+PROP_FINISHED	backup.c	/^	PROP_FINISHED,$/;"	e	enum:__anon1	file:
+PROP_HOST	backup.c	/^	PROP_HOST,$/;"	e	enum:__anon1	file:
+PROP_HOSTNAME	host.c	/^	PROP_HOSTNAME,$/;"	e	enum:__anon3	file:
+PROP_INCLUDES	host.c	/^	PROP_INCLUDES,$/;"	e	enum:__anon3	file:
+PROP_IP	host.c	/^	PROP_IP,$/;"	e	enum:__anon3	file:
+PROP_IPS	host.c	/^	PROP_IPS,$/;"	e	enum:__anon3	file:
+PROP_JOBS	backup.c	/^	PROP_JOBS,$/;"	e	enum:__anon1	file:
+PROP_JOB_BACKUP	job.c	/^	PROP_JOB_BACKUP,$/;"	e	enum:__anon5	file:
+PROP_JOB_DESTDIR	job.c	/^	PROP_JOB_DESTDIR$/;"	e	enum:__anon5	file:
+PROP_JOB_EXIT_CODE	job.c	/^	PROP_JOB_EXIT_CODE,$/;"	e	enum:__anon5	file:
+PROP_JOB_FINISHED	job.c	/^	PROP_JOB_FINISHED,$/;"	e	enum:__anon5	file:
+PROP_JOB_MYSQL_ID	job.c	/^	PROP_JOB_MYSQL_ID,$/;"	e	enum:__anon5	file:
+PROP_JOB_PID	job.c	/^	PROP_JOB_PID,$/;"	e	enum:__anon5	file:
+PROP_JOB_RSYNC_CMD	job.c	/^	PROP_JOB_RSYNC_CMD,$/;"	e	enum:__anon5	file:
+PROP_JOB_SRCDIR	job.c	/^	PROP_JOB_SRCDIR,$/;"	e	enum:__anon5	file:
+PROP_JOB_STARTED	job.c	/^	PROP_JOB_STARTED,$/;"	e	enum:__anon5	file:
+PROP_JOB_STATE	job.c	/^	PROP_JOB_STATE,$/;"	e	enum:__anon5	file:
+PROP_LAST	backup.c	/^	PROP_LAST,$/;"	e	enum:__anon1	file:
+PROP_MAX_AGE	host.c	/^	PROP_MAX_AGE,$/;"	e	enum:__anon3	file:
+PROP_MAX_AGE_FULL	host.c	/^	PROP_MAX_AGE_FULL,$/;"	e	enum:__anon3	file:
+PROP_MAX_AGE_INCR	host.c	/^	PROP_MAX_AGE_INCR,$/;"	e	enum:__anon3	file:
+PROP_MAX_INCR	host.c	/^	PROP_MAX_INCR,$/;"	e	enum:__anon3	file:
+PROP_MYSQL_ID	backup.c	/^	PROP_MYSQL_ID$/;"	e	enum:__anon1	file:
+PROP_MYSQL_ID	host.c	/^	PROP_MYSQL_ID,$/;"	e	enum:__anon3	file:
+PROP_NAME	backup.c	/^	PROP_NAME,$/;"	e	enum:__anon1	file:
+PROP_NAME	host.c	/^	PROP_NAME,$/;"	e	enum:__anon3	file:
+PROP_N_JOBS	backup.c	/^	PROP_N_JOBS,$/;"	e	enum:__anon1	file:
+PROP_PATH	backup.c	/^	PROP_PATH,$/;"	e	enum:__anon1	file:
+PROP_QUEUED	backup.c	/^	PROP_QUEUED,$/;"	e	enum:__anon1	file:
+PROP_RSYNC_OPTS	host.c	/^	PROP_RSYNC_OPTS,$/;"	e	enum:__anon3	file:
+PROP_SCHEDULE	host.c	/^	PROP_SCHEDULE,$/;"	e	enum:__anon3	file:
+PROP_SRCDIRS	host.c	/^	PROP_SRCDIRS,$/;"	e	enum:__anon3	file:
+PROP_STARTED	backup.c	/^	PROP_STARTED,$/;"	e	enum:__anon1	file:
+PROP_STATE	backup.c	/^	PROP_STATE,$/;"	e	enum:__anon1	file:
+PROP_TYPE	backup.c	/^	PROP_TYPE,$/;"	e	enum:__anon1	file:
+PROP_USER	host.c	/^	PROP_USER,$/;"	e	enum:__anon3	file:
+QUEUED_SIGNAL	backup.c	/^	QUEUED_SIGNAL,$/;"	e	enum:__anon2	file:
+STARTED	job.c	/^	STARTED,$/;"	e	enum:__anon6	file:
+STARTED_SIGNAL	backup.c	/^	STARTED_SIGNAL,$/;"	e	enum:__anon2	file:
+STATE_SIGNAL	backup.c	/^	STATE_SIGNAL,$/;"	e	enum:__anon2	file:
+app_data_aux_ptr	main.c	/^AppData *app_data_aux_ptr;$/;"	v
+backup_add_job	backup.c	/^void backup_add_job(Backup *backup, Job *job){$/;"	f
+backup_archive	backup.c	/^void backup_archive(ExistingBackup *eback, Host *host){$/;"	f
+backup_cancel	backup.c	/^void backup_cancel(Backup *backup){$/;"	f
+backup_class_init	backup.c	/^static void backup_class_init (BackupClass *klass){$/;"	f	file:
+backup_dump	backup.c	/^void backup_dump(Backup *backup){$/;"	f
+backup_failure	backup.c	/^static void backup_failure(Backup *self){$/;"	f	file:
+backup_finalize	backup.c	/^static void backup_finalize (GObject *object) {$/;"	f	file:
+backup_finished	backup.c	/^static void backup_finished(Backup *self){$/;"	f	file:
+backup_get_backup_type	backup.c	/^BusBackupType backup_get_backup_type(Backup *backup){$/;"	f
+backup_get_backup_type_str	backup.c	/^const gchar *backup_get_backup_type_str(Backup *backup){$/;"	f
+backup_get_duration	backup.c	/^gdouble backup_get_duration(Backup *backup){$/;"	f
+backup_get_failures	backup.c	/^gint backup_get_failures(Backup *backup){$/;"	f
+backup_get_finished	backup.c	/^time_t backup_get_finished(Backup *backup){$/;"	f
+backup_get_full_path	backup.c	/^const gchar *backup_get_full_path(Backup *backup){$/;"	f
+backup_get_host	backup.c	/^Host *backup_get_host(Backup *backup){$/;"	f
+backup_get_jobs	backup.c	/^GList *backup_get_jobs(Backup *backup){$/;"	f
+backup_get_mysql_id	backup.c	/^gint backup_get_mysql_id(Backup *backup){$/;"	f
+backup_get_n_jobs	backup.c	/^gint backup_get_n_jobs(Backup *backup){$/;"	f
+backup_get_name	backup.c	/^const gchar *backup_get_name(Backup *backup){$/;"	f
+backup_get_path	backup.c	/^const gchar *backup_get_path(Backup *backup){$/;"	f
+backup_get_property	backup.c	/^static void backup_get_property (GObject *object, guint prop_id, GValue *value, GParamSpec *pspec){$/;"	f	file:
+backup_get_queued	backup.c	/^time_t backup_get_queued(Backup *backup){$/;"	f
+backup_get_running_jobs	backup.c	/^GList *backup_get_running_jobs(Backup *backup){$/;"	f
+backup_get_started	backup.c	/^time_t backup_get_started(Backup *backup){$/;"	f
+backup_get_state	backup.c	/^BusBackupState backup_get_state(Backup *backup){$/;"	f
+backup_get_state_str	backup.c	/^const gchar *backup_get_state_str(Backup *backup){$/;"	f
+backup_init	backup.c	/^static void backup_init (Backup *object){$/;"	f	file:
+backup_job_finished	backup.c	/^static void backup_job_finished(Backup *self){$/;"	f	file:
+backup_job_started	backup.c	/^static void backup_job_started(Backup *self){$/;"	f	file:
+backup_log	backup.c	/^void backup_log(Backup *backup, gchar *fmt, ...){$/;"	f
+backup_new	backup.c	/^Backup *backup_new(void){$/;"	f
+backup_new_for_host	backup.c	/^Backup *backup_new_for_host(Host *host){$/;"	f
+backup_post_backup	backup.c	/^void backup_post_backup(Backup *backup){$/;"	f
+backup_pre_backup	backup.c	/^gboolean backup_pre_backup(Backup *backup){$/;"	f
+backup_queued	backup.c	/^static void backup_queued(Backup *self){$/;"	f	file:
+backup_remove_job	backup.c	/^void backup_remove_job(Backup *backup, Job *job){$/;"	f
+backup_remove_job_by_pid	backup.c	/^void backup_remove_job_by_pid(Backup *backup, GPid pid){$/;"	f
+backup_run	backup.c	/^void backup_run(Backup *backup, AppData *app_data){$/;"	f
+backup_set_backup_type	backup.c	/^void backup_set_backup_type(Backup *backup, BusBackupType type){$/;"	f
+backup_set_failures	backup.c	/^void backup_set_failures(Backup *backup, gint n){$/;"	f
+backup_set_finished	backup.c	/^void backup_set_finished(Backup *backup, time_t finished){$/;"	f
+backup_set_host	backup.c	/^void backup_set_host(Backup *backup, Host *host){$/;"	f
+backup_set_mysql_id	backup.c	/^void backup_set_mysql_id(Backup *backup, gint id){$/;"	f
+backup_set_property	backup.c	/^static void backup_set_property (GObject *object, guint prop_id, const GValue *value, GParamSpec *pspec){$/;"	f	file:
+backup_set_queued	backup.c	/^void backup_set_queued(Backup *backup, time_t queued){$/;"	f
+backup_set_started	backup.c	/^void backup_set_started(Backup *backup, time_t started){$/;"	f
+backup_set_state	backup.c	/^void backup_set_state(Backup *backup, BusBackupState state){$/;"	f
+backup_signals	backup.c	/^static guint backup_signals[LAST_SIGNAL] = { 0 };$/;"	v	file:
+backup_started	backup.c	/^static void backup_started(Backup *self){$/;"	f	file:
+backup_state_changed	backup.c	/^static void backup_state_changed(Backup *self){$/;"	f	file:
+check_backup	main.c	/^static BusBackupType check_backup(Host *host){$/;"	f	file:
+cleanup	main.c	/^static void cleanup(){$/;"	f	file:
+db_backup_insert	db.c	/^gint db_backup_insert(Backup *backup, MYSQL *mysql){$/;"	f
+db_backup_update	db.c	/^gint db_backup_update(Backup *backup, const gchar *key, gchar *value, MYSQL *mysql){$/;"	f
+db_close	db.c	/^void db_close(MYSQL *mysql){$/;"	f
+db_connect	db.c	/^MYSQL *db_connect(const gchar *login, const gchar *password){$/;"	f
+db_host_add	db.c	/^gint db_host_add(Host *host, MYSQL *mysql){$/;"	f
+db_hosts_store	db.c	/^void db_hosts_store(GList *hosts, MYSQL *mysql){$/;"	f
+db_job_add	db.c	/^gint db_job_add(Job *job, MYSQL *mysql){$/;"	f
+db_job_update	db.c	/^gint db_job_update(Job *job, MYSQL *mysql){$/;"	f
+db_read_host	db.c	/^Host *db_read_host(MYSQL_ROW row, MYSQL_FIELD *fields, gint num_fields, Host *default_host){$/;"	f
+db_read_hosts	db.c	/^GList *db_read_hosts(MYSQL *mysql){$/;"	f
+delete_folder_tree	host.c	/^void delete_folder_tree (const gchar* directory_name) {$/;"	f
+do_archive	main.c	/^static gboolean do_archive(AppData *app_data){$/;"	f	file:
+do_backup	main.c	/^static gboolean do_backup(AppData *app_data){$/;"	f	file:
+find_by_name	main.c	/^static gboolean find_by_name(Host *host, const gchar *name){$/;"	f	file:
+g_list_clone	db.c	/^GList *g_list_clone(GList *src){$/;"	f
+get_age	main.c	/^static gdouble get_age(const gchar *str){$/;"	f	file:
+handle_signal	main.c	/^static sighandler_t handle_signal(gint sig_nr, sighandler_t signalhandler){$/;"	f	file:
+host_add_exclude	host.c	/^void host_add_exclude(Host *self, const gchar *exclude){$/;"	f
+host_add_include	host.c	/^void host_add_include(Host *self, const gchar *include){$/;"	f
+host_add_ip	host.c	/^void host_add_ip(Host *self, const gchar *ip){$/;"	f
+host_add_schedule	host.c	/^void host_add_schedule(Host *self, const gchar *schedule){$/;"	f
+host_add_srcdir	host.c	/^void host_add_srcdir(Host *self, const gchar *srcdir){$/;"	f
+host_class_init	host.c	/^static void host_class_init (HostClass *klass){$/;"	f	file:
+host_created	host.c	/^static void host_created (Host *self){$/;"	f	file:
+host_dump	host.c	/^void host_dump(Host *host){$/;"	f
+host_finalize	host.c	/^static void host_finalize (GObject *object) {$/;"	f	file:
+host_find_by_name	main.c	/^static Host *host_find_by_name(const gchar *name, AppData *app_data){$/;"	f	file:
+host_free_existing_backup	host.c	/^void host_free_existing_backup(ExistingBackup *eb){$/;"	f
+host_get_archivedir	host.c	/^const gchar *host_get_archivedir(Host *self){$/;"	f
+host_get_backupdir	host.c	/^const gchar *host_get_backupdir(Host *self){$/;"	f
+host_get_email	host.c	/^const gchar *host_get_email(Host *self){$/;"	f
+host_get_hostname	host.c	/^const gchar *host_get_hostname(Host *self){$/;"	f
+host_get_ip	host.c	/^const gchar *host_get_ip(Host *self){$/;"	f
+host_get_max_age	host.c	/^gdouble host_get_max_age(Host *self){$/;"	f
+host_get_max_age_full	host.c	/^gdouble host_get_max_age_full(Host *self){$/;"	f
+host_get_max_age_incr	host.c	/^gdouble host_get_max_age_incr(Host *self){$/;"	f
+host_get_max_incr	host.c	/^gint host_get_max_incr(Host *self){$/;"	f
+host_get_mysql_id	host.c	/^gint host_get_mysql_id(Host *self){$/;"	f
+host_get_n_full	host.c	/^gint host_get_n_full(Host *host){$/;"	f
+host_get_n_incr	host.c	/^gint host_get_n_incr(Host *host){$/;"	f
+host_get_name	host.c	/^const gchar *host_get_name(Host *self){$/;"	f
+host_get_property	host.c	/^static void host_get_property (GObject *object, guint prop_id, GValue *value, GParamSpec *pspec){$/;"	f	file:
+host_get_rsync_opts	host.c	/^const gchar *host_get_rsync_opts(Host *self){$/;"	f
+host_get_user	host.c	/^const gchar *host_get_user(Host *self){$/;"	f
+host_get_youngest_backup	host.c	/^ExistingBackup *host_get_youngest_backup(Host *host, BusBackupType type){$/;"	f
+host_init	host.c	/^static void host_init (Host *object){$/;"	f	file:
+host_is_on_schedule	host.c	/^gboolean host_is_on_schedule(Host *self){$/;"	f
+host_is_online	host.c	/^gboolean host_is_online(Host *self){$/;"	f
+host_new	host.c	/^Host *host_new(void){$/;"	f
+host_new_from_config_setting	host.c	/^Host *host_new_from_config_setting(config_t *config, config_setting_t *cs){$/;"	f
+host_ping	host.c	/^gboolean host_ping(Host *host, gchar *ip){$/;"	f
+host_read_backups	host.c	/^GList *host_read_backups(Host *host, BusBackupType type){$/;"	f
+host_remove_incr_backups	host.c	/^void host_remove_incr_backups(Host *host){$/;"	f
+host_retrieve_hostname	host.c	/^gchar *host_retrieve_hostname(Host *host, gchar *ip){$/;"	f
+host_send_email	host.c	/^gint host_send_email(Host *self, const gchar *subject, const gchar *message){$/;"	f
+host_set_archivedir	host.c	/^void host_set_archivedir(Host *self, const gchar *archivedir){$/;"	f
+host_set_backupdir	host.c	/^void host_set_backupdir(Host *self, const gchar *backupdir){$/;"	f
+host_set_email	host.c	/^void host_set_email(Host *self, const gchar *email){$/;"	f
+host_set_hostname	host.c	/^void host_set_hostname(Host *self, const gchar *hostname){$/;"	f
+host_set_ip	host.c	/^void host_set_ip(Host *self, const gchar *ip){$/;"	f
+host_set_max_age	host.c	/^void host_set_max_age(Host *self, gdouble max_age){$/;"	f
+host_set_max_age_full	host.c	/^void host_set_max_age_full(Host *self, gdouble max_age_full){$/;"	f
+host_set_max_age_incr	host.c	/^void host_set_max_age_incr(Host *self, gdouble max_age_incr){$/;"	f
+host_set_max_incr	host.c	/^void host_set_max_incr(Host *self, gint max_incr){$/;"	f
+host_set_mysql_id	host.c	/^void host_set_mysql_id(Host *self, gint mysql_id){$/;"	f
+host_set_name	host.c	/^void host_set_name(Host *self, const gchar *name){$/;"	f
+host_set_property	host.c	/^static void host_set_property (GObject *object, guint prop_id, const GValue *value, GParamSpec *pspec){$/;"	f	file:
+host_set_rsync_opts	host.c	/^void host_set_rsync_opts(Host *self, const gchar *rsync_opts){$/;"	f
+host_set_user	host.c	/^void host_set_user(Host *self, const gchar *user){$/;"	f
+host_signals	host.c	/^static guint host_signals[LAST_SIGNAL] = { 0 };$/;"	v	file:
+is_valid_ip	db.c	/^gboolean is_valid_ip(const gchar *str){$/;"	f
+isofunc	host.c	/^static gint isofunc(ExistingBackup *a, ExistingBackup *b, gpointer udata){$/;"	f	file:
+job_cancel	job.c	/^void job_cancel(Job *job){$/;"	f
+job_class_init	job.c	/^static void job_class_init (JobClass *klass){$/;"	f	file:
+job_dump	job.c	/^void job_dump(Job *job){$/;"	f
+job_finalize	job.c	/^static void job_finalize (GObject *object) {$/;"	f	file:
+job_finished	job.c	/^static void job_finished (Job *self){$/;"	f	file:
+job_get_backup	job.c	/^Backup *job_get_backup(Job *job){$/;"	f
+job_get_destdir	job.c	/^const gchar *job_get_destdir(Job *job){$/;"	f
+job_get_exit_code	job.c	/^gint job_get_exit_code(Job *job){$/;"	f
+job_get_finished	job.c	/^time_t job_get_finished(Job *job){$/;"	f
+job_get_hostname	job.c	/^const gchar *job_get_hostname(Job *job){$/;"	f
+job_get_mysql_id	job.c	/^gint job_get_mysql_id(Job *job){$/;"	f
+job_get_pid	job.c	/^GPid job_get_pid(Job *job){$/;"	f
+job_get_property	job.c	/^static void job_get_property (GObject *object, guint prop_id, GValue *value, GParamSpec *pspec){$/;"	f	file:
+job_get_rsync_cmd	job.c	/^const gchar *job_get_rsync_cmd(Job *job){$/;"	f
+job_get_srcdir	job.c	/^const gchar *job_get_srcdir(Job *job){$/;"	f
+job_get_started	job.c	/^time_t job_get_started(Job *job){$/;"	f
+job_get_state	job.c	/^gint job_get_state(Job *job){$/;"	f
+job_get_state_str	job.c	/^const gchar *job_get_state_str(Job *job){$/;"	f
+job_init	job.c	/^static void job_init (Job *object){$/;"	f	file:
+job_new	job.c	/^Job *job_new(Backup *backup, gchar *srcdir){$/;"	f
+job_run	job.c	/^void job_run(Job *job){$/;"	f
+job_set_backup	job.c	/^void job_set_backup(Job *job, Backup *backup){$/;"	f
+job_set_destdir	job.c	/^void job_set_destdir(Job *job, gchar *str){$/;"	f
+job_set_exit_code	job.c	/^void job_set_exit_code(Job *job, gint code){$/;"	f
+job_set_finished	job.c	/^void job_set_finished(Job *job, time_t t){$/;"	f
+job_set_mysql_id	job.c	/^void job_set_mysql_id(Job *job, gint id){$/;"	f
+job_set_pid	job.c	/^void job_set_pid(Job *job, GPid pid){$/;"	f
+job_set_property	job.c	/^static void job_set_property (GObject *object, guint prop_id, const GValue *value, GParamSpec *pspec){$/;"	f	file:
+job_set_rsync_cmd	job.c	/^void job_set_rsync_cmd(Job *job, gchar *cmd){$/;"	f
+job_set_srcdir	job.c	/^void job_set_srcdir(Job *job, gchar *str){$/;"	f
+job_set_started	job.c	/^void job_set_started(Job *job, time_t t){$/;"	f
+job_set_state	job.c	/^void job_set_state(Job *job, BusJobState state){$/;"	f
+job_signals	job.c	/^static guint job_signals[LAST_SIGNAL] = { 0 };$/;"	v	file:
+job_started	job.c	/^static void job_started (Job *self){$/;"	f	file:
+list_to_string	db.c	/^gchar *list_to_string(GList *list){$/;"	f
+main	main.c	/^int main(int argc, char **argv){$/;"	f
+network_read	main.c	/^static gboolean network_read(GIOChannel *channel, GIOCondition condition, gpointer udata){$/;"	f	file:
+on_archive_failed	backup.c	/^void on_archive_failed(Host *host){$/;"	f
+on_backup_failure	main.c	/^static void on_backup_failure(Backup *backup, gint failures, AppData *app_data){$/;"	f	file:
+on_backup_finished	main.c	/^static void on_backup_finished(Backup *backup, time_t finished, AppData *app_data){$/;"	f	file:
+on_backup_job_finished	main.c	/^static void on_backup_job_finished(Backup *backup, Job *job, AppData *app_data){$/;"	f	file:
+on_backup_job_started	main.c	/^static void on_backup_job_started(Backup *backup, Job *job, AppData *app_data){$/;"	f	file:
+on_backup_queued	main.c	/^static void on_backup_queued(Backup *backup, time_t queued, AppData *app_data){$/;"	f	file:
+on_backup_started	main.c	/^static void on_backup_started(Backup *backup, time_t started, AppData *app_data){$/;"	f	file:
+on_backup_state_changed	main.c	/^static void on_backup_state_changed(Backup *backup, gint state, AppData *app_data){$/;"	f	file:
+on_incoming	main.c	/^static void on_incoming(GSocketService *service, gpointer udata){$/;"	f	file:
+on_job_finished	backup.c	/^static void on_job_finished(Job *job, gint status, gpointer udata){$/;"	f	file:
+on_job_started	backup.c	/^static void on_job_started(Job *job, gpointer udata){$/;"	f	file:
+on_job_state_changed	backup.c	/^static void on_job_state_changed(Job *job, gint status, gpointer udata){$/;"	f	file:
+on_sendmail_exit	host.c	/^static void on_sendmail_exit(GPid pid, gint status, gpointer udata){$/;"	f	file:
+ping_host	main.c	/^static void ping_host(Host *host, AppData *app_data){$/;"	f	file:
+queue_backup	main.c	/^static void queue_backup(Host *host, BusBackupType type, AppData *app_data){$/;"	f	file:
+read_config	main.c	/^static gboolean read_config(AppData *app_data){$/;"	f	file:
+reload	main.c	/^static void reload(gint nr){$/;"	f	file:
+replace_slashes	job.c	/^gchar *replace_slashes(gchar *str, gchar repl){$/;"	f
+rtrim	host.c	/^gchar *rtrim (gchar *s){$/;"	f
+sighandler_t	main.c	/^typedef void (*sighandler_t)(int);$/;"	t	file:
+start_daemon	main.c	/^static void start_daemon(const gchar *log_name, gint facility){$/;"	f	file:
+string_list_concat	host.c	/^static gchar *string_list_concat(GList *list, const gchar *delim){$/;"	f	file:
+time_t_to_datetime_str	db.c	/^gchar *time_t_to_datetime_str(time_t time){$/;"	f
+wakeup	main.c	/^static gboolean wakeup(AppData *app_data){$/;"	f	file:
+watch_archive	backup.c	/^void watch_archive(GPid pid, gint status, Host *host){$/;"	f
+watch_job	job.c	/^void watch_job(GPid pid, gint status, Job *job){$/;"	f

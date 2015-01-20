@@ -416,6 +416,7 @@ static void on_sendmail_exit(GPid pid, gint status, gpointer udata){
 	syslog(LOG_NOTICE, "sendmail exitet with code %u", WEXITSTATUS(status));
 }
 
+
 gint host_send_email(Host *self, const gchar *subject, const gchar *message){
 	gchar *argv[5];
 	GError *error = NULL;
@@ -427,9 +428,10 @@ gint host_send_email(Host *self, const gchar *subject, const gchar *message){
 
 	syslog(LOG_NOTICE, "Sending email to %s", self->name->str);
 
-	argv[0] = "/usr/sbin/sendmail";
-	argv[1] = self->email->str;
-	argv[2] = NULL;
+	argv[0] = "/usr/bin/mail";
+	argv[1] = g_strdup_printf("-s %s", subject);
+	argv[2] = self->email->str;
+	argv[3] = NULL;
 
 	g_spawn_async_with_pipes(NULL, argv, NULL, G_SPAWN_DO_NOT_REAP_CHILD, NULL, NULL, &pid, &stdin, NULL, NULL, &error);
 	if (error){
@@ -438,12 +440,17 @@ gint host_send_email(Host *self, const gchar *subject, const gchar *message){
 	}
 	g_child_watch_add(pid, on_sendmail_exit, self);
 	GIOChannel *in;
-	gchar *buf = g_strdup_printf("Subject: %s\n%s\n.\n", subject, message);
 	error = NULL;
 	in = g_io_channel_unix_new(stdin);
-	g_io_channel_write_chars(in, buf, -1, NULL, &error);
+	g_io_channel_write_chars(in, message, -1, NULL, &error);
+	if (error != NULL){
+		syslog(LOG_WARNING, "g_io_channel_write_chars() failed");
+		g_error_free(error);
+	}
+
 	g_io_channel_close(in);
-	g_free(buf);
+
+	g_free(argv[1]);
 
 	return (0);
 }
@@ -683,6 +690,10 @@ gchar *host_retrieve_hostname(Host *host, gchar *ip){
 		ip = host->ip->str;
 	}
 
+	if (g_strcmp0(host->ip->str, "127.0.0.1") == 0){
+		return "localhost";
+	}
+
 	gchar *argv[6];
 	argv[0] = "/usr/bin/ssh";
 	argv[1] = "-l";
@@ -733,7 +744,9 @@ gboolean host_is_online(Host *self){
 	GList *ipptr;
 
 	if (host_ping(self, NULL)){
+		syslog(LOG_DEBUG, "ping has been positive");
 		h = host_retrieve_hostname(self, NULL);
+		syslog(LOG_DEBUG, "host_retrieve_hostname() returned %s, self->hostname is %s", h, self->hostname->str);
 		if (g_strcmp0(h, self->hostname->str) == 0){
 			return (TRUE);
 		}

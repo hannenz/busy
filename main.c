@@ -407,12 +407,13 @@ static void ping_host(Host *host, AppData *app_data){
 		else {
 			g_string_append_printf(mssg, "offline.");
 		}
+		syslog(LOG_INFO, mssg->str);
 	}
+	/*
 	else {
 		g_string_append_printf(mssg, "not on schedule.");
 	}
-
-	syslog(LOG_INFO, mssg->str);
+	*/
 	g_string_free(mssg, TRUE);
 }
 

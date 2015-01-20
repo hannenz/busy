@@ -7,6 +7,8 @@
 //#define USER "root"
 #define WAKEUP_INTERVAL 60
 #define CONFIG_FILE "/etc/busy/busy.conf"
+#define PRE_BACKUP_SCRIPT "/etc/busy/pre-backup"
+#define POST_BACKUP_SCRIPT "/etc/busy/post-backup"
 
 typedef struct {
 	GList *hosts;
